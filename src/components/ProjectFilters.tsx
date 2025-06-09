@@ -18,7 +18,7 @@ export function ProjectFilters({ filters, onFiltersChange, availableTags }: Proj
   };
 
   const handleStatusChange = (value: string) => {
-    onFiltersChange({ ...filters, status: value });
+    onFiltersChange({ ...filters, status: value === "all" ? "" : value });
   };
 
   const handleTagToggle = (tag: string) => {
@@ -45,12 +45,12 @@ export function ProjectFilters({ filters, onFiltersChange, availableTags }: Proj
           />
         </div>
         
-        <Select value={filters.status} onValueChange={handleStatusChange}>
+        <Select value={filters.status || "all"} onValueChange={handleStatusChange}>
           <SelectTrigger className="w-full sm:w-48">
             <SelectValue placeholder="Filtrar por status" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">Todos os status</SelectItem>
+            <SelectItem value="all">Todos os status</SelectItem>
             <SelectItem value="Em andamento">Em andamento</SelectItem>
             <SelectItem value="Finalizado">Finalizado</SelectItem>
             <SelectItem value="Atrasado">Atrasado</SelectItem>
