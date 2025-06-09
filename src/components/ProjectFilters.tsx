@@ -35,18 +35,19 @@ export function ProjectFilters({ filters, onFiltersChange, availableTags }: Proj
   };
 
   return (
-    <div className="space-y-4 p-4 bg-card rounded-lg border">
+    <div className="space-y-4 p-6 bg-white rounded-lg border border-gray-200 shadow-sm">
       <div className="flex flex-col sm:flex-row gap-4">
         <div className="flex-1">
           <Input
-            placeholder="Buscar por nome ou cliente..."
+            placeholder="🔍 Buscar por nome ou cliente..."
             value={filters.search}
             onChange={(e) => handleSearchChange(e.target.value)}
+            className="h-10"
           />
         </div>
         
         <Select value={filters.status || "all"} onValueChange={handleStatusChange}>
-          <SelectTrigger className="w-full sm:w-48">
+          <SelectTrigger className="w-full sm:w-48 h-10">
             <SelectValue placeholder="Filtrar por status" />
           </SelectTrigger>
           <SelectContent>
@@ -58,20 +59,20 @@ export function ProjectFilters({ filters, onFiltersChange, availableTags }: Proj
           </SelectContent>
         </Select>
 
-        <Button variant="outline" onClick={clearFilters}>
-          Limpar Filtros
+        <Button variant="outline" onClick={clearFilters} className="h-10">
+          🗑️ Limpar Filtros
         </Button>
       </div>
 
       {availableTags.length > 0 && (
         <div>
-          <p className="text-sm font-medium mb-2">Filtrar por tags:</p>
+          <p className="text-sm font-medium mb-3 text-gray-700">🏷️ Filtrar por tags:</p>
           <div className="flex flex-wrap gap-2">
             {availableTags.map((tag) => (
               <Badge
                 key={tag}
                 variant={filters.tags.includes(tag) ? "default" : "outline"}
-                className="cursor-pointer hover:bg-primary/20"
+                className="cursor-pointer hover:bg-blue-100 transition-colors px-3 py-1"
                 onClick={() => handleTagToggle(tag)}
               >
                 #{tag}
