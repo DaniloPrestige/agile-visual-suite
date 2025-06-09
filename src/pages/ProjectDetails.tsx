@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
@@ -112,20 +111,9 @@ export function ProjectDetails() {
   };
 
   const generateReport = () => {
-    // Implementação básica - seria expandida com jsPDF
-    const reportData = {
-      project: project.name,
-      client: project.client,
-      status: project.status,
-      progress: `${project.progress}%`,
-      tasks: `${project.tasks.filter(t => t.completed).length}/${project.tasks.length} concluídas`,
-      team: project.team.join(', '),
-      risks: `${project.risks.filter(r => r.status === 'ativo').length} ativos`,
-      comments: project.comments.length
-    };
-    
-    console.log('Gerando relatório:', reportData);
-    alert('Funcionalidade de relatório será implementada com jsPDF');
+    // TODO: Implement PDF export functionality
+    console.log('Gerando relatório:', project);
+    alert('Funcionalidade de relatório será implementada em breve');
   };
 
   const formatDate = (dateString: string) => {
@@ -453,7 +441,7 @@ export function ProjectDetails() {
                         <h4 className="font-medium">{risk.name}</h4>
                         <div className="flex gap-2">
                           <Badge className={getRiskColor(risk.impact, risk.probability)}>
-                            {risk.impact}/{risk.probability}
+                            Impacto: {risk.impact} | Probabilidade: {risk.probability}
                           </Badge>
                           <Select value={risk.status} onValueChange={(value: Risk['status']) => handleRiskStatusChange(risk.id, value)}>
                             <SelectTrigger className="w-32">

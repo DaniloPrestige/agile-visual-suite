@@ -21,10 +21,14 @@ export function ProjectForm({ isOpen, onClose, onSubmit, project }: ProjectFormP
     client: '',
     description: '',
     status: 'Em andamento' as Project['status'],
+    phase: 'Iniciação' as Project['phase'],
     startDate: '',
     endDate: '',
     tags: '',
-    team: ''
+    team: '',
+    initialValue: 0,
+    finalValue: 0,
+    currency: 'BRL' as Project['currency']
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -36,10 +40,14 @@ export function ProjectForm({ isOpen, onClose, onSubmit, project }: ProjectFormP
         client: project.client,
         description: project.description,
         status: project.status,
+        phase: project.phase,
         startDate: project.startDate,
         endDate: project.endDate,
         tags: project.tags.join(', '),
-        team: project.team.join(', ')
+        team: project.team.join(', '),
+        initialValue: project.initialValue || 0,
+        finalValue: project.finalValue || 0,
+        currency: project.currency || 'BRL'
       });
     } else {
       setFormData({
@@ -47,10 +55,14 @@ export function ProjectForm({ isOpen, onClose, onSubmit, project }: ProjectFormP
         client: '',
         description: '',
         status: 'Em andamento',
+        phase: 'Iniciação',
         startDate: '',
         endDate: '',
         tags: '',
-        team: ''
+        team: '',
+        initialValue: 0,
+        finalValue: 0,
+        currency: 'BRL'
       });
     }
     setIsSubmitting(false);
@@ -69,10 +81,14 @@ export function ProjectForm({ isOpen, onClose, onSubmit, project }: ProjectFormP
         client: formData.client.trim(),
         description: formData.description.trim(),
         status: formData.status,
+        phase: formData.phase,
         startDate: formData.startDate,
         endDate: formData.endDate,
         tags: formData.tags.split(',').map(tag => tag.trim()).filter(Boolean),
-        team: formData.team.split(',').map(member => member.trim()).filter(Boolean)
+        team: formData.team.split(',').map(member => member.trim()).filter(Boolean),
+        initialValue: formData.initialValue,
+        finalValue: formData.finalValue,
+        currency: formData.currency
       };
 
       await onSubmit(projectData);
@@ -83,10 +99,14 @@ export function ProjectForm({ isOpen, onClose, onSubmit, project }: ProjectFormP
         client: '',
         description: '',
         status: 'Em andamento',
+        phase: 'Iniciação',
         startDate: '',
         endDate: '',
         tags: '',
-        team: ''
+        team: '',
+        initialValue: 0,
+        finalValue: 0,
+        currency: 'BRL'
       });
       
       onClose();
@@ -97,11 +117,11 @@ export function ProjectForm({ isOpen, onClose, onSubmit, project }: ProjectFormP
     }
   };
 
-  const handleInputChange = (field: string, value: string) => {
+  const handleInputChange = (field: string, value: string | number) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const isFormValid = formData.name.trim() && formData.client.trim() && formData.description.trim() && formData.startDate && formData.endDate;
+  const isFormValid = formData.name.trim() && formData.client.trim() && formData.team.trim() && formData.startDate && formData.endDate;
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -139,13 +159,12 @@ export function ProjectForm({ isOpen, onClose, onSubmit, project }: ProjectFormP
           </div>
 
           <div>
-            <Label htmlFor="description" className="text-sm font-medium">Descrição *</Label>
+            <Label htmlFor="description" className="text-sm font-medium">Descrição</Label>
             <Textarea
               id="description"
               value={formData.description}
               onChange={(e) => handleInputChange('description', e.target.value)}
               placeholder="Descreva os objetivos e escopo do projeto..."
-              required
               rows={3}
               className="mt-1"
             />
@@ -167,16 +186,73 @@ export function ProjectForm({ isOpen, onClose, onSubmit, project }: ProjectFormP
               </Select>
             </div>
             <div>
-              <Label htmlFor="team" className="text-sm font-medium">Gestão de Pessoas</Label>
+              <Label htmlFor="phase" className="text-sm font-medium">Fase *</Label>
+              <Select value={formData.phase} onValueChange={(value) => handleInputChange('phase', value)}>
+                <SelectTrigger className="mt-1">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Iniciação">🚀 Iniciação</SelectItem>
+                  <SelectItem value="Planejamento">📋 Planejamento</SelectItem>
+                  <SelectItem value="Execução">⚡ Execução</SelectItem>
+                  <SelectItem value="Monitoramento">👁️ Monitoramento</SelectItem>
+                  <SelectItem value="Encerramento">🏁 Encerramento</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <Label htmlFor="initialValue" className="text-sm font-medium">Valor Inicial *</Label>
               <Input
-                id="team"
-                value={formData.team}
-                onChange={(e) => handleInputChange('team', e.target.value)}
-                placeholder="João Silva, maria@empresa.com, Pedro"
+                id="initialValue"
+                type="number"
+                step="0.01"
+                value={formData.initialValue}
+                onChange={(e) => handleInputChange('initialValue', parseFloat(e.target.value) || 0)}
+                placeholder="0,00"
                 className="mt-1"
               />
-              <p className="text-xs text-gray-500 mt-1">Separe nomes/emails por vírgula</p>
             </div>
+            <div>
+              <Label htmlFor="finalValue" className="text-sm font-medium">Valor Final</Label>
+              <Input
+                id="finalValue"
+                type="number"
+                step="0.01"
+                value={formData.finalValue}
+                onChange={(e) => handleInputChange('finalValue', parseFloat(e.target.value) || 0)}
+                placeholder="0,00"
+                className="mt-1"
+              />
+            </div>
+            <div>
+              <Label htmlFor="currency" className="text-sm font-medium">Moeda *</Label>
+              <Select value={formData.currency} onValueChange={(value) => handleInputChange('currency', value)}>
+                <SelectTrigger className="mt-1">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="BRL">🇧🇷 Real (BRL)</SelectItem>
+                  <SelectItem value="USD">🇺🇸 Dólar (USD)</SelectItem>
+                  <SelectItem value="EUR">🇪🇺 Euro (EUR)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div>
+            <Label htmlFor="team" className="text-sm font-medium">Equipe *</Label>
+            <Input
+              id="team"
+              value={formData.team}
+              onChange={(e) => handleInputChange('team', e.target.value)}
+              placeholder="João Silva, maria@empresa.com, Pedro"
+              required
+              className="mt-1"
+            />
+            <p className="text-xs text-gray-500 mt-1">Separe nomes/emails por vírgula</p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -192,7 +268,7 @@ export function ProjectForm({ isOpen, onClose, onSubmit, project }: ProjectFormP
               />
             </div>
             <div>
-              <Label htmlFor="endDate" className="text-sm font-medium">Data de Conclusão *</Label>
+              <Label htmlFor="endDate" className="text-sm font-medium">Previsão de Conclusão *</Label>
               <Input
                 id="endDate"
                 type="date"

@@ -4,10 +4,11 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Project } from "../types/project";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Eye, Edit, Trash2, Calendar, Users, Tag } from "lucide-react";
+import { Eye, Edit, Calendar, Users } from "lucide-react";
 import { currencyService } from "../services/currencyService";
 
 interface ProjectCardCompactProps {
@@ -15,6 +16,7 @@ interface ProjectCardCompactProps {
   onView: (project: Project) => void;
   onEdit: (project: Project) => void;
   onDelete: (id: string) => void;
+  onStatusChange: (id: string, status: Project['status']) => void;
   isSelected: boolean;
   onSelectChange: (selected: boolean) => void;
   currentCurrency: 'BRL' | 'USD' | 'EUR';
@@ -25,6 +27,7 @@ export function ProjectCardCompact({
   onView, 
   onEdit, 
   onDelete, 
+  onStatusChange,
   isSelected, 
   onSelectChange,
   currentCurrency 
@@ -86,7 +89,12 @@ export function ProjectCardCompact({
           />
           <div className="flex-1 min-w-0">
             <div className="flex justify-between items-start mb-2">
-              <h3 className="font-bold text-lg text-gray-900 truncate">{project.name}</h3>
+              <h3 
+                className="font-bold text-lg text-gray-900 truncate cursor-pointer hover:text-blue-600 transition-colors"
+                onClick={() => onView(project)}
+              >
+                {project.name}
+              </h3>
               <div className="flex gap-1 ml-2">
                 <Badge className={`${getStatusColor(project.status)} text-xs px-2 py-1`}>
                   {project.status}
@@ -157,9 +165,16 @@ export function ProjectCardCompact({
               <Button variant="outline" size="sm" onClick={() => onEdit(project)} className="text-xs">
                 <Edit className="w-3 h-3" />
               </Button>
-              <Button variant="outline" size="sm" onClick={() => onDelete(project.id)} className="text-xs text-red-600">
-                <Trash2 className="w-3 h-3" />
-              </Button>
+              <Select value={project.status} onValueChange={(value: Project['status']) => onStatusChange(project.id, value)}>
+                <SelectTrigger className="w-24 h-8 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Em andamento">Ativo</SelectItem>
+                  <SelectItem value="Finalizado">Finalizado</SelectItem>
+                  <SelectItem value="Excluído">Excluído</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
         </div>

@@ -5,12 +5,11 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Plus, Download, Check, Trash2, X } from "lucide-react";
+import { Plus, Download, Check, Trash2, X, Search } from "lucide-react";
 import { ProjectCardCompact } from "../components/ProjectCardCompact";
 import { ProjectForm } from "../components/ProjectForm";
-import { ProjectFilters } from "../components/ProjectFilters";
 import { AlertPopup } from "../components/AlertPopup";
 import { useProjects } from "../hooks/useProjects";
 import { Project, FilterOptions } from "../types/project";
@@ -27,11 +26,7 @@ export function ProjectList() {
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [confirmAction, setConfirmAction] = useState<{ type: 'complete' | 'delete', projects: string[] } | null>(null);
   const [currentCurrency, setCurrentCurrency] = useState<'BRL' | 'USD' | 'EUR'>('BRL');
-  const [filters, setFilters] = useState<FilterOptions>({
-    search: '',
-    status: '',
-    tags: []
-  });
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
     currencyService.updateRates();
@@ -40,13 +35,9 @@ export function ProjectList() {
   const filteredProjects = useMemo(() => {
     return projects.filter(project => {
       const matchesSearch = 
-        project.name.toLowerCase().includes(filters.search.toLowerCase()) ||
-        project.client.toLowerCase().includes(filters.search.toLowerCase());
-      
-      const matchesStatus = !filters.status || project.status === filters.status;
-      
-      const matchesTags = filters.tags.length === 0 || 
-        filters.tags.some(tag => project.tags.includes(tag));
+        project.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        project.client.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        project.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()));
 
       const matchesTab = activeTab === 'active' 
         ? ['Em andamento', 'Atrasado'].includes(project.status)
@@ -54,14 +45,9 @@ export function ProjectList() {
         ? project.status === 'Finalizado'
         : project.status === 'Excluído';
 
-      return matchesSearch && matchesStatus && matchesTags && matchesTab;
+      return matchesSearch && matchesTab;
     });
-  }, [projects, filters, activeTab]);
-
-  const availableTags = useMemo(() => {
-    const allTags = projects.flatMap(project => project.tags);
-    return Array.from(new Set(allTags)).sort();
-  }, [projects]);
+  }, [projects, searchTerm, activeTab]);
 
   const projectStats = useMemo(() => {
     const active = projects.filter(p => ['Em andamento', 'Atrasado'].includes(p.status));
@@ -100,8 +86,11 @@ export function ProjectList() {
     navigate(`/projects/${project.id}`);
   };
 
-  const handleDeleteProject = (id: string) => {
-    setConfirmAction({ type: 'delete', projects: [id] });
+  const handleStatusChange = (projectId: string, newStatus: Project['status']) => {
+    setConfirmAction({ 
+      type: newStatus === 'Finalizado' ? 'complete' : 'delete', 
+      projects: [projectId] 
+    });
     setShowConfirmDialog(true);
   };
 
@@ -151,8 +140,9 @@ export function ProjectList() {
       ? projects.filter(p => selectedProjects.includes(p.id))
       : filteredProjects;
     
+    // TODO: Implement PDF export functionality
     console.log('Exporting projects:', projectsToExport);
-    // TODO: Implement PDF export
+    alert('Funcionalidade de exportação será implementada em breve');
   };
 
   const handleCloseForm = () => {
@@ -166,20 +156,9 @@ export function ProjectList() {
       
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Projetos</h1>
-          <p className="text-gray-600">Gerencie seus projetos</p>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">🚀 Gerencie todos os seus projetos em um só lugar</h1>
         </div>
         <div className="flex items-center gap-4">
-          <Select value={currentCurrency} onValueChange={(value: 'BRL' | 'USD' | 'EUR') => setCurrentCurrency(value)}>
-            <SelectTrigger className="w-32">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="BRL">🇧🇷 BRL</SelectItem>
-              <SelectItem value="USD">🇺🇸 USD</SelectItem>
-              <SelectItem value="EUR">🇪🇺 EUR</SelectItem>
-            </SelectContent>
-          </Select>
           <Button onClick={() => setIsFormOpen(true)} className="gap-2 bg-blue-600 hover:bg-blue-700">
             <Plus className="w-4 h-4" />
             Novo Projeto
@@ -200,10 +179,10 @@ export function ProjectList() {
             <div className="text-sm text-gray-600">Em Progresso</div>
           </CardContent>
         </Card>
-        <Card className="border-l-4 border-l-gray-500">
+        <Card className="border-l-4 border-l-green-500">
           <CardContent className="p-4">
-            <div className="text-2xl font-bold">{projectStats.active}</div>
-            <div className="text-sm text-gray-600">Pendentes</div>
+            <div className="text-2xl font-bold">{projectStats.completed}</div>
+            <div className="text-sm text-gray-600">Finalizados</div>
           </CardContent>
         </Card>
         <Card className="border-l-4 border-l-red-500">
@@ -214,11 +193,17 @@ export function ProjectList() {
         </Card>
       </div>
 
-      <ProjectFilters
-        filters={filters}
-        onFiltersChange={setFilters}
-        availableTags={availableTags}
-      />
+      <div className="flex items-center gap-4">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+          <Input
+            placeholder="Buscar por nome, cliente ou tags..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+      </div>
 
       {selectedProjects.length > 0 && (
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-center justify-between">
@@ -291,7 +276,8 @@ export function ProjectList() {
                     project={project}
                     onView={handleViewProject}
                     onEdit={handleEditProject}
-                    onDelete={handleDeleteProject}
+                    onDelete={(id) => handleStatusChange(id, 'Excluído')}
+                    onStatusChange={handleStatusChange}
                     isSelected={selectedProjects.includes(project.id)}
                     onSelectChange={(selected) => {
                       if (selected) {
