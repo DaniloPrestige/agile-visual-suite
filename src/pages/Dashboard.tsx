@@ -15,26 +15,27 @@ export function Dashboard() {
   const { projects } = useProjects();
 
   const dashboardData = useMemo(() => {
-    const total = projects.length;
+    const activeProjects = projects.filter(p => p.status !== 'Excluído');
+    const total = activeProjects.length;
     const inProgress = projects.filter(p => p.status === 'Em andamento').length;
     const completed = projects.filter(p => p.status === 'Finalizado').length;
     const overdue = projects.filter(p => {
       const endDate = new Date(p.endDate);
       const today = new Date();
-      return endDate < today && p.status !== 'Finalizado' && p.status !== 'Cancelado';
+      return endDate < today && p.status !== 'Finalizado' && p.status !== 'Cancelado' && p.status !== 'Excluído';
     }).length;
 
-    // Calcular progresso médio apenas dos projetos ativos (Em andamento)
-    const activeProjects = projects.filter(p => p.status === 'Em andamento');
-    const avgProgress = activeProjects.length > 0 
-      ? Math.round(activeProjects.reduce((sum, p) => sum + p.progress, 0) / activeProjects.length)
+    // Calcular progresso médio apenas dos projetos em andamento (ativos)
+    const activeInProgressProjects = projects.filter(p => p.status === 'Em andamento');
+    const avgProgress = activeInProgressProjects.length > 0 
+      ? Math.round(activeInProgressProjects.reduce((sum, p) => sum + p.progress, 0) / activeInProgressProjects.length)
       : 0;
 
     // Projetos recentes (últimos 7 dias)
     const recentProjects = projects.filter(p => {
       const startDate = new Date(p.startDate);
       const weekAgo = subDays(new Date(), 7);
-      return isWithinInterval(startDate, { start: weekAgo, end: new Date() });
+      return isWithinInterval(startDate, { start: weekAgo, end: new Date() }) && p.status !== 'Excluído';
     });
 
     // Próximos vencimentos (próximos 7 dias)
@@ -43,7 +44,7 @@ export function Dashboard() {
       const today = new Date();
       const nextWeek = new Date();
       nextWeek.setDate(today.getDate() + 7);
-      return endDate >= today && endDate <= nextWeek && p.status !== 'Finalizado';
+      return endDate >= today && endDate <= nextWeek && p.status !== 'Finalizado' && p.status !== 'Excluído';
     });
 
     return {
@@ -52,7 +53,7 @@ export function Dashboard() {
       completed,
       overdue,
       avgProgress,
-      activeProjects: activeProjects.length,
+      activeProjects: activeInProgressProjects.length,
       recentProjects,
       upcomingDeadlines
     };
@@ -99,6 +100,7 @@ export function Dashboard() {
             <div>
               <div className="text-xl font-bold text-gray-900">Progresso Médio dos Projetos Ativos</div>
               <div className="text-sm text-gray-600">Baseado em {dashboardData.activeProjects} projetos em andamento</div>
+              <div className="text-xs text-gray-500 mt-1">* Métrica calculada apenas com base nos projetos com status "Em andamento"</div>
             </div>
           </CardTitle>
           <div className="text-right">
@@ -118,9 +120,9 @@ export function Dashboard() {
         </CardContent>
       </Card>
 
-      {/* Cards principais de estatísticas */}
+      {/* Cards principais de estatísticas - REMOVIDO onClick */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card className="hover:shadow-lg transition-shadow cursor-pointer bg-white border-l-4 border-l-blue-500" onClick={() => navigate('/projects')}>
+        <Card className="bg-white border-l-4 border-l-blue-500">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-gray-700">Total de Projetos</CardTitle>
             <div className="p-2 bg-blue-100 rounded-lg">
@@ -135,7 +137,7 @@ export function Dashboard() {
           </CardContent>
         </Card>
 
-        <Card className="hover:shadow-lg transition-shadow cursor-pointer bg-white border-l-4 border-l-blue-500" onClick={() => navigate('/analytics')}>
+        <Card className="bg-white border-l-4 border-l-blue-500">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-gray-700">Em Andamento</CardTitle>
             <div className="p-2 bg-blue-100 rounded-lg">
@@ -150,7 +152,7 @@ export function Dashboard() {
           </CardContent>
         </Card>
 
-        <Card className="hover:shadow-lg transition-shadow cursor-pointer bg-white border-l-4 border-l-green-500" onClick={() => navigate('/analytics')}>
+        <Card className="bg-white border-l-4 border-l-green-500">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-gray-700">Finalizados</CardTitle>
             <div className="p-2 bg-green-100 rounded-lg">
@@ -165,7 +167,7 @@ export function Dashboard() {
           </CardContent>
         </Card>
 
-        <Card className="hover:shadow-lg transition-shadow cursor-pointer bg-white border-l-4 border-l-red-500" onClick={() => navigate('/analytics')}>
+        <Card className="bg-white border-l-4 border-l-red-500">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-gray-700">Atrasados</CardTitle>
             <div className="p-2 bg-red-100 rounded-lg">

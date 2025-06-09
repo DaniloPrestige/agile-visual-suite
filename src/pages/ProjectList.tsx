@@ -1,3 +1,4 @@
+
 import { useState, useMemo, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -6,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Plus, Download, Check, Trash2, X, Search } from "lucide-react";
+import { Plus, Download, Check, Trash2, X, Search, TrashIcon } from "lucide-react";
 import { ProjectCardCompact } from "../components/ProjectCardCompact";
 import { ProjectForm } from "../components/ProjectForm";
 import { AlertPopup } from "../components/AlertPopup";
@@ -24,7 +25,7 @@ export function ProjectList() {
   const [selectedProjects, setSelectedProjects] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState('active');
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
-  const [confirmAction, setConfirmAction] = useState<{ type: 'complete' | 'delete', projects: string[] } | null>(null);
+  const [confirmAction, setConfirmAction] = useState<{ type: 'complete' | 'delete' | 'activate' | 'permanent-delete', projects: string[] } | null>(null);
   const [currentCurrency, setCurrentCurrency] = useState<'BRL' | 'USD' | 'EUR'>('BRL');
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -87,10 +88,13 @@ export function ProjectList() {
   };
 
   const handleStatusChange = (projectId: string, newStatus: Project['status']) => {
-    setConfirmAction({ 
-      type: newStatus === 'Finalizado' ? 'complete' : 'delete', 
-      projects: [projectId] 
-    });
+    if (newStatus === 'Finalizado') {
+      setConfirmAction({ type: 'complete', projects: [projectId] });
+    } else if (newStatus === 'Excluído') {
+      setConfirmAction({ type: 'delete', projects: [projectId] });
+    } else if (newStatus === 'Em andamento') {
+      setConfirmAction({ type: 'activate', projects: [projectId] });
+    }
     setShowConfirmDialog(true);
   };
 
@@ -103,7 +107,25 @@ export function ProjectList() {
 
   const handleBulkDelete = () => {
     if (selectedProjects.length > 0) {
-      setConfirmAction({ type: 'delete', projects: selectedProjects });
+      if (activeTab === 'deleted') {
+        setConfirmAction({ type: 'permanent-delete', projects: selectedProjects });
+      } else {
+        setConfirmAction({ type: 'delete', projects: selectedProjects });
+      }
+      setShowConfirmDialog(true);
+    }
+  };
+
+  const handleBulkActivate = () => {
+    if (selectedProjects.length > 0) {
+      setConfirmAction({ type: 'activate', projects: selectedProjects });
+      setShowConfirmDialog(true);
+    }
+  };
+
+  const handlePermanentDelete = () => {
+    if (selectedProjects.length > 0) {
+      setConfirmAction({ type: 'permanent-delete', projects: selectedProjects });
       setShowConfirmDialog(true);
     }
   };
@@ -136,6 +158,10 @@ export function ProjectList() {
           updateProject(projectId, { ...project, status: 'Finalizado' as Project['status'] });
         } else if (confirmAction.type === 'delete') {
           updateProject(projectId, { ...project, status: 'Excluído' as Project['status'] });
+        } else if (confirmAction.type === 'activate') {
+          updateProject(projectId, { ...project, status: 'Em andamento' as Project['status'] });
+        } else if (confirmAction.type === 'permanent-delete') {
+          deleteProject(projectId);
         }
       }
     });
@@ -156,6 +182,57 @@ export function ProjectList() {
   const handleCloseForm = () => {
     setIsFormOpen(false);
     setEditingProject(null);
+  };
+
+  const getConfirmationMessage = () => {
+    if (!confirmAction) return '';
+    
+    switch (confirmAction.type) {
+      case 'complete':
+        return `Tem certeza que deseja finalizar ${confirmAction.projects.length} projeto(s)?`;
+      case 'delete':
+        return `Tem certeza que deseja mover ${confirmAction.projects.length} projeto(s) para a lixeira?`;
+      case 'activate':
+        return `Tem certeza que deseja reativar ${confirmAction.projects.length} projeto(s)?`;
+      case 'permanent-delete':
+        return `Tem certeza que deseja excluir permanentemente ${confirmAction.projects.length} projeto(s)? Esta ação NÃO pode ser desfeita.`;
+      default:
+        return '';
+    }
+  };
+
+  const getConfirmationTitle = () => {
+    if (!confirmAction) return '';
+    
+    switch (confirmAction.type) {
+      case 'complete':
+        return 'Finalizar Projeto(s)';
+      case 'delete':
+        return 'Mover para Lixeira';
+      case 'activate':
+        return 'Reativar Projeto(s)';
+      case 'permanent-delete':
+        return 'Excluir Permanentemente';
+      default:
+        return '';
+    }
+  };
+
+  const getActionButtonText = () => {
+    if (!confirmAction) return '';
+    
+    switch (confirmAction.type) {
+      case 'complete':
+        return 'Finalizar';
+      case 'delete':
+        return 'Mover para Lixeira';
+      case 'activate':
+        return 'Reativar';
+      case 'permanent-delete':
+        return 'Excluir Permanentemente';
+      default:
+        return '';
+    }
   };
 
   return (
@@ -224,14 +301,34 @@ export function ProjectList() {
               <Download className="w-4 h-4 mr-2" />
               Exportar
             </Button>
-            <Button variant="outline" size="sm" onClick={handleBulkComplete}>
-              <Check className="w-4 h-4 mr-2" />
-              Finalizar
-            </Button>
-            <Button variant="outline" size="sm" onClick={handleBulkDelete} className="text-red-600">
-              <Trash2 className="w-4 h-4 mr-2" />
-              Excluir
-            </Button>
+            {activeTab === 'deleted' ? (
+              <>
+                <Button variant="outline" size="sm" onClick={handleBulkActivate}>
+                  <Check className="w-4 h-4 mr-2" />
+                  Reativar
+                </Button>
+                <Button variant="outline" size="sm" onClick={handlePermanentDelete} className="text-red-600">
+                  <TrashIcon className="w-4 h-4 mr-2" />
+                  Excluir Definitivamente
+                </Button>
+              </>
+            ) : activeTab === 'completed' ? (
+              <Button variant="outline" size="sm" onClick={handleBulkActivate}>
+                <Check className="w-4 h-4 mr-2" />
+                Reativar
+              </Button>
+            ) : (
+              <>
+                <Button variant="outline" size="sm" onClick={handleBulkComplete}>
+                  <Check className="w-4 h-4 mr-2" />
+                  Finalizar
+                </Button>
+                <Button variant="outline" size="sm" onClick={handleBulkDelete} className="text-red-600">
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Mover para Lixeira
+                </Button>
+              </>
+            )}
             <Button variant="ghost" size="sm" onClick={() => setSelectedProjects([])}>
               <X className="w-4 h-4" />
             </Button>
@@ -267,7 +364,7 @@ export function ProjectList() {
             </div>
           ) : (
             <div className="space-y-4">
-              {activeTab === 'active' && (
+              <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 text-sm">
                   <Checkbox 
                     checked={selectedProjects.length === filteredProjects.length}
@@ -275,7 +372,13 @@ export function ProjectList() {
                   />
                   <span>Selecionar todos ({filteredProjects.length})</span>
                 </div>
-              )}
+                {activeTab === 'deleted' && selectedProjects.length > 0 && (
+                  <Button variant="outline" size="sm" onClick={handlePermanentDelete} className="text-red-600">
+                    <TrashIcon className="w-4 h-4 mr-2" />
+                    Excluir Definitivamente
+                  </Button>
+                )}
+              </div>
               
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {filteredProjects.map((project) => (
@@ -314,19 +417,19 @@ export function ProjectList() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {confirmAction?.type === 'complete' ? 'Finalizar Projeto(s)' : 'Excluir Projeto(s)'}
+              {getConfirmationTitle()}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              {confirmAction?.type === 'complete' 
-                ? `Tem certeza que deseja finalizar ${confirmAction.projects.length} projeto(s)?`
-                : `Tem certeza que deseja excluir ${confirmAction?.projects.length} projeto(s)? Esta ação pode ser revertida.`
-              }
+              {getConfirmationMessage()}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleConfirmAction}>
-              {confirmAction?.type === 'complete' ? 'Finalizar' : 'Excluir'}
+            <AlertDialogAction 
+              onClick={handleConfirmAction}
+              className={confirmAction?.type === 'permanent-delete' ? 'bg-red-600 hover:bg-red-700' : ''}
+            >
+              {getActionButtonText()}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
