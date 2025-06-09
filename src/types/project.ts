@@ -4,7 +4,8 @@ export interface Project {
   name: string;
   client: string;
   description: string;
-  status: 'Em andamento' | 'Finalizado' | 'Atrasado' | 'Cancelado';
+  status: 'Em andamento' | 'Finalizado' | 'Atrasado' | 'Cancelado' | 'Excluído';
+  phase: 'Iniciação' | 'Planejamento' | 'Execução' | 'Monitoramento' | 'Encerramento';
   startDate: string;
   endDate: string;
   tags: string[];
@@ -15,6 +16,9 @@ export interface Project {
   comments: Comment[];
   risks: Risk[];
   history: HistoryEntry[];
+  initialValue: number;
+  finalValue: number;
+  currency: 'BRL' | 'USD' | 'EUR';
 }
 
 export interface Task {
@@ -68,3 +72,20 @@ export type FilterOptions = {
   status: string;
   tags: string[];
 };
+
+export interface CurrencyRates {
+  BRL: number;
+  USD: number;
+  EUR: number;
+}
+
+export interface ProjectStats {
+  total: number;
+  active: number;
+  completed: number;
+  overdue: number;
+  deleted: number;
+  avgProgress: number;
+  totalValue: number;
+  completedValue: number;
+}

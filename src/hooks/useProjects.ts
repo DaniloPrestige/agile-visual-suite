@@ -22,7 +22,12 @@ export function useProjects() {
         details: `Projeto "${project.name}" foi criado`,
         timestamp: new Date().toISOString(),
         user: 'Sistema'
-      }]
+      }],
+      // Ensure default values for new fields
+      phase: project.phase || 'Iniciação',
+      initialValue: project.initialValue || 0,
+      finalValue: project.finalValue || 0,
+      currency: project.currency || 'BRL'
     };
     newProject.history[0].projectId = newProject.id;
     

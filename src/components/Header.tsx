@@ -7,30 +7,31 @@ export function Header() {
   const location = useLocation();
 
   const navItems = [
+    { label: '🏠 Início', path: '/projects' },
     { label: '📊 Dashboard', path: '/' },
-    { label: '📁 Projetos', path: '/projects' },
     { label: '📈 Analytics', path: '/analytics' }
   ];
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/60 shadow-sm">
-      <div className="container flex h-16 items-center px-6">
-        <div className="mr-8">
-          <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-green-600 bg-clip-text text-transparent">
-            🚀 Agile Canvas Suite
-          </h1>
+    <header className="bg-blue-600 text-white px-6 py-3">
+      <div className="container flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <div className="bg-white text-blue-600 w-12 h-12 rounded-lg flex items-center justify-center font-bold text-xl">
+            GP
+          </div>
+          <h1 className="text-xl font-bold">Gerência de Projetos</h1>
         </div>
         
-        <nav className="flex items-center space-x-2">
+        <nav className="flex items-center space-x-6">
           {navItems.map((item) => (
             <Button
               key={item.path}
-              variant={location.pathname === item.path ? "default" : "ghost"}
+              variant="ghost"
               onClick={() => navigate(item.path)}
-              className={`text-sm font-medium transition-all ${
+              className={`text-white hover:bg-white/20 ${
                 location.pathname === item.path 
-                  ? "bg-blue-600 text-white shadow-md" 
-                  : "hover:bg-blue-50 hover:text-blue-700"
+                  ? "bg-white/20" 
+                  : ""
               }`}
             >
               {item.label}
