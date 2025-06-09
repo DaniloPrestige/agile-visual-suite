@@ -139,7 +139,7 @@ export class PDFExportService {
       
       pdf.setFont('helvetica', 'normal');
       project.risks.slice(0, 5).forEach(risk => {
-        pdf.text(`• ${risk.name} (${risk.level} - ${risk.probability || 'N/A'})`, margin + 5, yPosition);
+        pdf.text(`• ${risk.name} (Impacto: ${risk.impact} - Probabilidade: ${risk.probability || 'N/A'})`, margin + 5, yPosition);
         yPosition += 6;
       });
 
