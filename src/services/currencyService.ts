@@ -1,48 +1,58 @@
 
-import { CurrencyRates } from '../types/project';
-
 class CurrencyService {
-  private rates: CurrencyRates = { BRL: 1, USD: 5.5, EUR: 6.2 };
-  private lastUpdate: Date = new Date();
+  private rates: { [key: string]: number } = {
+    BRL: 1,
+    USD: 5.50, // Default fallback rates
+    EUR: 6.20
+  };
 
-  async updateRates(): Promise<void> {
+  async updateRates() {
     try {
+      // Using a free currency API
       const response = await fetch('https://api.exchangerate-api.com/v4/latest/BRL');
       const data = await response.json();
       
-      this.rates = {
-        BRL: 1,
-        USD: 1 / data.rates.USD,
-        EUR: 1 / data.rates.EUR
-      };
-      this.lastUpdate = new Date();
-      console.log('Currency rates updated:', this.rates);
+      if (data.rates) {
+        this.rates = {
+          BRL: 1,
+          USD: 1 / data.rates.USD,
+          EUR: 1 / data.rates.EUR
+        };
+        console.info('Currency rates updated:', this.rates);
+      }
     } catch (error) {
-      console.warn('Failed to update currency rates, using cached rates');
+      console.warn('Failed to update currency rates, using fallback values');
     }
   }
 
-  getRates(): CurrencyRates {
-    return this.rates;
-  }
-
-  convert(amount: number, fromCurrency: keyof CurrencyRates, toCurrency: keyof CurrencyRates): number {
+  convert(amount: number, fromCurrency: string, toCurrency: string): number {
     if (fromCurrency === toCurrency) return amount;
     
-    const amountInBRL = amount / this.rates[fromCurrency];
-    return amountInBRL * this.rates[toCurrency];
+    // Convert to BRL first, then to target currency
+    const amountInBRL = fromCurrency === 'BRL' ? amount : amount / this.rates[fromCurrency];
+    return toCurrency === 'BRL' ? amountInBRL : amountInBRL * this.rates[toCurrency];
   }
 
-  formatCurrency(amount: number, currency: keyof CurrencyRates): string {
-    const symbols = { BRL: 'R$', USD: '$', EUR: '€' };
-    return `${symbols[currency]} ${amount.toLocaleString('pt-BR', { 
-      minimumFractionDigits: 2, 
-      maximumFractionDigits: 2 
-    })}`;
+  formatCurrency(amount: number, currency: 'BRL' | 'USD' | 'EUR'): string {
+    const locale = currency === 'BRL' ? 'pt-BR' : currency === 'EUR' ? 'de-DE' : 'en-US';
+    const currencyCode = currency;
+    
+    return new Intl.NumberFormat(locale, {
+      style: 'currency',
+      currency: currencyCode,
+      minimumFractionDigits: 2
+    }).format(amount);
   }
 
-  getLastUpdate(): Date {
-    return this.lastUpdate;
+  // Parse currency input (starting from cents)
+  parseCurrencyInput(input: string): number {
+    const numbersOnly = input.replace(/\D/g, '');
+    return numbersOnly ? parseInt(numbersOnly) / 100 : 0;
+  }
+
+  // Format input as user types (showing currency format)
+  formatCurrencyInput(value: number, currency: 'BRL' | 'USD' | 'EUR'): string {
+    return this.formatCurrency(value, currency);
   }
 }
 

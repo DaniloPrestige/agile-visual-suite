@@ -1,4 +1,3 @@
-
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -165,12 +164,15 @@ export function ProjectCardCompact({
               <Button variant="outline" size="sm" onClick={() => onEdit(project)} className="text-xs">
                 <Edit className="w-3 h-3" />
               </Button>
-              <Select value={project.status} onValueChange={(value: Project['status']) => onStatusChange(project.id, value)}>
-                <SelectTrigger className="w-24 h-8 text-xs">
-                  <SelectValue />
+              <Select 
+                value={project.status} 
+                onValueChange={(value: Project['status']) => onStatusChange(project.id, value)}
+              >
+                <SelectTrigger className="w-32 h-8 text-xs">
+                  <SelectValue placeholder="Status" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Em andamento">Ativo</SelectItem>
+                  <SelectItem value="Em andamento">Em andamento</SelectItem>
                   <SelectItem value="Finalizado">Finalizado</SelectItem>
                   <SelectItem value="Excluído">Excluído</SelectItem>
                 </SelectContent>

@@ -1,4 +1,3 @@
-
 import { useState, useMemo, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -15,6 +14,7 @@ import { useProjects } from "../hooks/useProjects";
 import { Project, FilterOptions } from "../types/project";
 import { useNavigate } from "react-router-dom";
 import { currencyService } from "../services/currencyService";
+import { PDFExportService } from "../services/pdfExportService";
 
 export function ProjectList() {
   const navigate = useNavigate();
@@ -108,6 +108,24 @@ export function ProjectList() {
     }
   };
 
+  const handleExportProjects = async () => {
+    const projectsToExport = selectedProjects.length > 0 
+      ? projects.filter(p => selectedProjects.includes(p.id))
+      : filteredProjects;
+    
+    if (projectsToExport.length === 0) {
+      alert('Nenhum projeto selecionado para exportar');
+      return;
+    }
+
+    try {
+      await PDFExportService.exportProjects(projectsToExport, currentCurrency);
+    } catch (error) {
+      console.error('Error exporting projects:', error);
+      alert('Erro ao exportar projetos. Tente novamente.');
+    }
+  };
+
   const handleConfirmAction = () => {
     if (!confirmAction) return;
 
@@ -133,16 +151,6 @@ export function ProjectList() {
     } else {
       setSelectedProjects(filteredProjects.map(p => p.id));
     }
-  };
-
-  const handleExportProjects = () => {
-    const projectsToExport = selectedProjects.length > 0 
-      ? projects.filter(p => selectedProjects.includes(p.id))
-      : filteredProjects;
-    
-    // TODO: Implement PDF export functionality
-    console.log('Exporting projects:', projectsToExport);
-    alert('Funcionalidade de exportação será implementada em breve');
   };
 
   const handleCloseForm = () => {
