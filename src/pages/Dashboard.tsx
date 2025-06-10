@@ -1,68 +1,65 @@
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useNavigate } from "react-router-dom";
 import { useProjects } from "../hooks/useProjects";
 import { useOverdueAlerts } from "../hooks/useOverdueAlerts";
 import { Project } from "../types/project";
-import { AlertTriangle, Calendar, CheckCircle, Clock, Users, Tag, TrendingUp, BarChart3, DollarSign, Target, Award, X, Building, FileText, Zap } from "lucide-react";
+import { AlertTriangle, Calendar, CheckCircle, Clock, Users, Tag, TrendingUp, BarChart3, Target, Award, X, Filter } from "lucide-react";
 import { differenceInDays, isWithinInterval, subDays } from "date-fns";
-import { currencyService } from "../services/currencyService";
 
 export function Dashboard() {
   const navigate = useNavigate();
   const { projects } = useProjects();
   const { shouldShowAlert, dismissAlert } = useOverdueAlerts(projects);
+  const [statusFilter, setStatusFilter] = useState<string>('active');
+
+  const filteredProjects = useMemo(() => {
+    switch (statusFilter) {
+      case 'active':
+        return projects.filter(p => p.status !== 'Excluído');
+      case 'completed':
+        return projects.filter(p => p.status === 'Finalizado');
+      case 'deleted':
+        return projects.filter(p => p.status === 'Excluído');
+      default:
+        return projects;
+    }
+  }, [projects, statusFilter]);
 
   const dashboardData = useMemo(() => {
-    const activeProjects = projects.filter(p => p.status !== 'Excluído');
+    const activeProjects = filteredProjects.filter(p => p.status !== 'Excluído');
     const total = activeProjects.length;
-    const inProgress = projects.filter(p => p.status === 'Em andamento').length;
-    const completed = projects.filter(p => p.status === 'Finalizado').length;
-    const canceled = projects.filter(p => p.status === 'Cancelado').length;
-    const overdue = projects.filter(p => {
+    const inProgress = filteredProjects.filter(p => p.status === 'Em andamento').length;
+    const completed = filteredProjects.filter(p => p.status === 'Finalizado').length;
+    const canceled = filteredProjects.filter(p => p.status === 'Cancelado').length;
+    const overdue = filteredProjects.filter(p => {
       const endDate = new Date(p.endDate);
       const today = new Date();
       return endDate < today && p.status !== 'Finalizado' && p.status !== 'Cancelado' && p.status !== 'Excluído';
     }).length;
 
-    // Calcular progresso médio apenas dos projetos em andamento (ativos)
-    const activeInProgressProjects = projects.filter(p => p.status === 'Em andamento');
+    const activeInProgressProjects = filteredProjects.filter(p => p.status === 'Em andamento');
     const avgProgress = activeInProgressProjects.length > 0 
       ? Math.round(activeInProgressProjects.reduce((sum, p) => sum + p.progress, 0) / activeInProgressProjects.length)
       : 0;
 
-    // Cálculos financeiros
-    const totalRevenue = activeProjects.reduce((sum, p) => sum + (p.finalValue || p.initialValue || 0), 0);
-    const completedRevenue = projects.filter(p => p.status === 'Finalizado').reduce((sum, p) => sum + (p.finalValue || p.initialValue || 0), 0);
-    const budgetVariation = activeProjects.reduce((sum, p) => {
-      const initial = p.initialValue || 0;
-      const final = p.finalValue || 0;
-      return sum + (final - initial);
-    }, 0);
-
-    // Métricas de qualidade
-    const onTimeProjects = projects.filter(p => p.status === 'Finalizado' && new Date(p.endDate) >= new Date()).length;
-    const deliveryRate = completed > 0 ? Math.round((onTimeProjects / completed) * 100) : 100;
-
-    // Total de tarefas
     const totalTasks = activeProjects.reduce((sum, p) => sum + p.tasks.length, 0);
     const completedTasks = activeProjects.reduce((sum, p) => sum + p.tasks.filter(t => t.completed).length, 0);
     const taskCompletionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
-    // Projetos recentes (últimos 7 dias)
-    const recentProjects = projects.filter(p => {
+    const recentProjects = filteredProjects.filter(p => {
       const startDate = new Date(p.startDate);
       const weekAgo = subDays(new Date(), 7);
       return isWithinInterval(startDate, { start: weekAgo, end: new Date() }) && p.status !== 'Excluído';
     });
 
-    // Próximos vencimentos (próximos 7 dias)
-    const upcomingDeadlines = projects.filter(p => {
+    const upcomingDeadlines = filteredProjects.filter(p => {
       const endDate = new Date(p.endDate);
       const today = new Date();
       const nextWeek = new Date();
@@ -70,8 +67,7 @@ export function Dashboard() {
       return endDate >= today && endDate <= nextWeek && p.status !== 'Finalizado' && p.status !== 'Excluído';
     });
 
-    // Projetos atrasados
-    const overdueProjects = projects.filter(p => {
+    const overdueProjects = filteredProjects.filter(p => {
       const endDate = new Date(p.endDate);
       const today = new Date();
       return endDate < today && p.status !== 'Finalizado' && p.status !== 'Cancelado' && p.status !== 'Excluído';
@@ -88,15 +84,11 @@ export function Dashboard() {
       recentProjects,
       upcomingDeadlines,
       overdueProjects,
-      totalRevenue,
-      completedRevenue,
-      budgetVariation,
-      deliveryRate,
       totalTasks,
       completedTasks,
       taskCompletionRate
     };
-  }, [projects]);
+  }, [filteredProjects]);
 
   const getStatusColor = (status: Project['status']) => {
     switch (status) {
@@ -119,9 +111,25 @@ export function Dashboard() {
 
   return (
     <div className="space-y-6">
-      <div className="text-center space-y-4">
-        <h1 className="text-4xl font-bold">Dashboard</h1>
-        <p className="text-muted-foreground text-sm">Gerencie seus projetos</p>
+      <div className="flex justify-between items-center">
+        <div className="text-center space-y-4">
+          <h1 className="text-4xl font-bold">Dashboard</h1>
+          <p className="text-muted-foreground text-sm">Gerencie seus projetos</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Filter className="h-4 w-4" />
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-48">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="active">Projetos Ativos</SelectItem>
+              <SelectItem value="completed">Projetos Finalizados</SelectItem>
+              <SelectItem value="deleted">Projetos na Lixeira</SelectItem>
+              <SelectItem value="all">Todos os Projetos</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       {/* Alerta de projetos atrasados */}
@@ -141,219 +149,6 @@ export function Dashboard() {
           </AlertDescription>
         </Alert>
       )}
-
-      {/* Cards financeiros principais */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-        <Card 
-          className="lg:col-span-1 border-l-4 border-l-green-500 cursor-pointer hover:shadow-lg transition-all"
-          onClick={() => navigate('/analytics')}
-        >
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm flex items-center gap-2">
-              <DollarSign className="h-4 w-4 text-green-600" />
-              Visão Geral
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-1">
-              <div className="flex items-center gap-1">
-                <DollarSign className="h-3 w-3 text-orange-600" />
-                <span className="text-xs">Receita Total</span>
-              </div>
-              <div className="text-lg font-bold text-green-600">
-                {currencyService.formatCurrency(dashboardData.totalRevenue, 'BRL')}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card 
-          className="lg:col-span-1 border-l-4 border-l-blue-500 cursor-pointer hover:shadow-lg transition-all"
-          onClick={() => navigate('/analytics')}
-        >
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm flex items-center gap-2">
-              <BarChart3 className="h-4 w-4 text-blue-600" />
-              Performance
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-1">
-              <div className="flex items-center gap-1">
-                <Target className="h-3 w-3 text-pink-600" />
-                <span className="text-xs">Orçamento Total</span>
-              </div>
-              <div className="text-lg font-bold text-blue-600">
-                {currencyService.formatCurrency(dashboardData.totalRevenue * 0.6, 'BRL')}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card 
-          className="lg:col-span-1 border-l-4 border-l-red-500 cursor-pointer hover:shadow-lg transition-all"
-          onClick={() => navigate('/analytics')}
-        >
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm flex items-center gap-2">
-              <TrendingUp className="h-4 w-4 text-red-600" />
-              Financeiro
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-1">
-              <div className="flex items-center gap-1">
-                <TrendingUp className="h-3 w-3 text-green-600" />
-                <span className="text-xs">Variação</span>
-              </div>
-              <div className={`text-lg font-bold ${dashboardData.budgetVariation >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                {dashboardData.budgetVariation >= 0 ? '+' : ''}{currencyService.formatCurrency(dashboardData.budgetVariation, 'BRL')}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card 
-          className="lg:col-span-1 border-l-4 border-l-purple-500 cursor-pointer hover:shadow-lg transition-all"
-          onClick={() => navigate('/analytics')}
-        >
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm flex items-center gap-2">
-              <Award className="h-4 w-4 text-purple-600" />
-              Qualidade
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-1">
-              <div className="flex items-center gap-1">
-                <Award className="h-3 w-3 text-purple-600" />
-                <span className="text-xs">% Variação</span>
-              </div>
-              <div className="text-lg font-bold text-purple-600">+{dashboardData.deliveryRate}%</div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card 
-          className="lg:col-span-1 border-l-4 border-l-yellow-500 cursor-pointer hover:shadow-lg transition-all"
-          onClick={() => navigate('/analytics')}
-        >
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm flex items-center gap-2">
-              <Clock className="h-4 w-4 text-yellow-600" />
-              Estratégico
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-1">
-              <div className="flex items-center gap-1">
-                <Clock className="h-3 w-3 text-orange-600" />
-                <span className="text-xs">Entrega no Prazo</span>
-              </div>
-              <div className="text-lg font-bold text-yellow-600">{dashboardData.deliveryRate}%</div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Cards financeiros detalhados segunda linha */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
-        <Card 
-          className="border-l-4 border-l-green-500 cursor-pointer hover:shadow-lg transition-all"
-          onClick={() => navigate('/analytics')}
-        >
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm flex items-center gap-2">
-              <DollarSign className="h-4 w-4 text-green-600" />
-              EBITDA
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-lg font-bold text-green-600">
-              {currencyService.formatCurrency(dashboardData.completedRevenue * 0.28, 'BRL')}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card 
-          className="border-l-4 border-l-blue-500 cursor-pointer hover:shadow-lg transition-all"
-          onClick={() => navigate('/analytics')}
-        >
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm flex items-center gap-2">
-              <BarChart3 className="h-4 w-4 text-blue-600" />
-              Margem Líquida
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-lg font-bold text-blue-600">15%</div>
-          </CardContent>
-        </Card>
-
-        <Card 
-          className="border-l-4 border-l-red-500 cursor-pointer hover:shadow-lg transition-all"
-          onClick={() => navigate('/analytics')}
-        >
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm flex items-center gap-2">
-              <TrendingUp className="h-4 w-4 text-red-600" />
-              Fluxo de Caixa
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-lg font-bold text-red-600">
-              {currencyService.formatCurrency(dashboardData.completedRevenue * 0.25, 'BRL')}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card 
-          className="border-l-4 border-l-purple-500 cursor-pointer hover:shadow-lg transition-all"
-          onClick={() => navigate('/analytics')}
-        >
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm flex items-center gap-2">
-              <Target className="h-4 w-4 text-purple-600" />
-              ROI Médio
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-lg font-bold text-purple-600">+24%</div>
-          </CardContent>
-        </Card>
-
-        <Card 
-          className="border-l-4 border-l-yellow-500 cursor-pointer hover:shadow-lg transition-all"
-          onClick={() => navigate('/analytics')}
-        >
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm flex items-center gap-2">
-              <Clock className="h-4 w-4 text-yellow-600" />
-              Payback
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-lg font-bold text-yellow-600">18 meses</div>
-          </CardContent>
-        </Card>
-
-        <Card 
-          className="border-l-4 border-l-indigo-500 cursor-pointer hover:shadow-lg transition-all"
-          onClick={() => navigate('/analytics')}
-        >
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm flex items-center gap-2">
-              <TrendingUp className="h-4 w-4 text-indigo-600" />
-              NPV
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-lg font-bold text-indigo-600">
-              {currencyService.formatCurrency(dashboardData.completedRevenue * 0.45, 'BRL')}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
 
       {/* Progresso Médio Geral - Destaque no topo */}
       <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">

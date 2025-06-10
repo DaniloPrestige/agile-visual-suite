@@ -1,69 +1,77 @@
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
 import { useProjects } from "../hooks/useProjects";
 import { differenceInDays } from "date-fns";
-import { DollarSign, TrendingUp, Target, Clock, Award, BarChart3, Users, AlertTriangle, Calendar, Zap, Building, FileText, CheckCircle } from "lucide-react";
+import { DollarSign, TrendingUp, Target, Clock, Award, BarChart3, Users, AlertTriangle, Calendar, Zap, Building, FileText, CheckCircle, Filter } from "lucide-react";
 import { currencyService } from "../services/currencyService";
 import { useNavigate } from "react-router-dom";
 
 export function Analytics() {
   const { projects } = useProjects();
   const navigate = useNavigate();
+  const [statusFilter, setStatusFilter] = useState<string>('active');
+
+  const filteredProjects = useMemo(() => {
+    switch (statusFilter) {
+      case 'active':
+        return projects.filter(p => p.status !== 'Excluído');
+      case 'completed':
+        return projects.filter(p => p.status === 'Finalizado');
+      case 'deleted':
+        return projects.filter(p => p.status === 'Excluído');
+      default:
+        return projects;
+    }
+  }, [projects, statusFilter]);
 
   const analytics = useMemo(() => {
-    const activeProjects = projects.filter(p => p.status !== 'Excluído');
+    const activeProjects = filteredProjects.filter(p => p.status !== 'Excluído');
     const total = activeProjects.length;
-    const inProgress = projects.filter(p => p.status === 'Em andamento').length;
-    const completed = projects.filter(p => p.status === 'Finalizado').length;
-    const canceled = projects.filter(p => p.status === 'Cancelado').length;
-    const overdue = projects.filter(p => {
+    const inProgress = filteredProjects.filter(p => p.status === 'Em andamento').length;
+    const completed = filteredProjects.filter(p => p.status === 'Finalizado').length;
+    const canceled = filteredProjects.filter(p => p.status === 'Cancelado').length;
+    const overdue = filteredProjects.filter(p => {
       const endDate = new Date(p.endDate);
       const today = new Date();
       return endDate < today && p.status !== 'Finalizado' && p.status !== 'Cancelado' && p.status !== 'Excluído';
     }).length;
 
-    // Calcular progresso médio apenas dos projetos em andamento
-    const activeInProgressProjects = projects.filter(p => p.status === 'Em andamento');
+    const activeInProgressProjects = filteredProjects.filter(p => p.status === 'Em andamento');
     const avgProgress = activeInProgressProjects.length > 0 
       ? Math.round(activeInProgressProjects.reduce((sum, p) => sum + p.progress, 0) / activeInProgressProjects.length)
       : 0;
 
-    // Cálculos financeiros
     const totalRevenue = activeProjects.reduce((sum, p) => sum + (p.finalValue || p.initialValue || 0), 0);
-    const completedRevenue = projects.filter(p => p.status === 'Finalizado').reduce((sum, p) => sum + (p.finalValue || p.initialValue || 0), 0);
+    const completedRevenue = filteredProjects.filter(p => p.status === 'Finalizado').reduce((sum, p) => sum + (p.finalValue || p.initialValue || 0), 0);
     const budgetVariation = activeProjects.reduce((sum, p) => {
       const initial = p.initialValue || 0;
       const final = p.finalValue || 0;
       return sum + (final - initial);
     }, 0);
 
-    // Métricas de qualidade
-    const onTimeProjects = projects.filter(p => p.status === 'Finalizado' && new Date(p.endDate) >= new Date()).length;
+    const onTimeProjects = filteredProjects.filter(p => p.status === 'Finalizado' && new Date(p.endDate) >= new Date()).length;
     const deliveryRate = completed > 0 ? Math.round((onTimeProjects / completed) * 100) : 100;
 
-    // Total de tarefas e conclusão
     const totalTasks = activeProjects.reduce((sum, p) => sum + p.tasks.length, 0);
     const completedTasks = activeProjects.reduce((sum, p) => sum + p.tasks.filter(t => t.completed).length, 0);
     const taskCompletionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
-    // Projetos por tag
     const tagStats = activeProjects.flatMap(p => p.tags).reduce((acc, tag) => {
       acc[tag] = (acc[tag] || 0) + 1;
       return acc;
     }, {} as Record<string, number>);
 
-    // Projetos por responsável
     const teamStats = activeProjects.flatMap(p => p.team).reduce((acc, member) => {
       acc[member] = (acc[member] || 0) + 1;
       return acc;
     }, {} as Record<string, number>);
 
-    // Projetos atrasados com detalhes
-    const overdueDetails = projects
+    const overdueDetails = filteredProjects
       .filter(p => {
         const endDate = new Date(p.endDate);
         const today = new Date();
@@ -76,15 +84,23 @@ export function Analytics() {
       .sort((a, b) => b.daysOverdue - a.daysOverdue)
       .slice(0, 5);
 
-    // Dados para evolução da receita
-    const revenueEvolution = [
-      { month: 'Jan', receita: 120000, planejado: 100000 },
-      { month: 'Fev', receita: 180000, planejado: 150000 },
-      { month: 'Mar', receita: 220000, planejado: 180000 },
-      { month: 'Abr', receita: 190000, planejado: 200000 },
-      { month: 'Mai', receita: 280000, planejado: 250000 },
-      { month: 'Jun', receita: completedRevenue, planejado: totalRevenue }
-    ];
+    // Dados reais baseados nos projetos atuais (sem dados fictícios de meses passados)
+    const currentMonth = new Date().getMonth();
+    const monthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+    const revenueEvolution = monthNames.slice(0, currentMonth + 1).map((month, index) => {
+      if (index === currentMonth) {
+        return { 
+          month, 
+          receita: completedRevenue, 
+          planejado: totalRevenue 
+        };
+      }
+      return { 
+        month, 
+        receita: 0, 
+        planejado: 0 
+      };
+    });
 
     return {
       total,
@@ -105,9 +121,8 @@ export function Analytics() {
       taskCompletionRate,
       revenueEvolution
     };
-  }, [projects]);
+  }, [filteredProjects]);
 
-  // Dados para gráficos com labels mais curtos
   const statusData = [
     { name: 'Em andamento', value: analytics.inProgress, color: '#3b82f6' },
     { name: 'Finalizado', value: analytics.completed, color: '#10b981' },
@@ -149,6 +164,22 @@ export function Analytics() {
     return null;
   };
 
+  const TeamTooltip = ({ active, payload }: any) => {
+    if (active && payload && payload.length) {
+      const data = payload[0];
+      const teamMember = teamData.find(t => t.name === data.payload.name);
+      return (
+        <div className="bg-white p-3 border rounded-lg shadow-lg">
+          <p className="font-medium">{teamMember?.fullName || data.payload.name}</p>
+          <p style={{ color: '#10b981' }}>
+            Projetos: {data.value}
+          </p>
+        </div>
+      );
+    }
+    return null;
+  };
+
   const PieTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
       const data = payload[0];
@@ -164,9 +195,30 @@ export function Analytics() {
     return null;
   };
 
+  const handleCardClick = (cardType: string) => {
+    // Navigate to detailed page for each card type
+    navigate(`/analytics/details/${cardType}`);
+  };
+
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-bold">Analytics</h1>
+      <div className="flex justify-between items-center">
+        <h1 className="text-3xl font-bold">Analytics</h1>
+        <div className="flex items-center gap-2">
+          <Filter className="h-4 w-4" />
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-48">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="active">Projetos Ativos</SelectItem>
+              <SelectItem value="completed">Projetos Finalizados</SelectItem>
+              <SelectItem value="deleted">Projetos na Lixeira</SelectItem>
+              <SelectItem value="all">Todos os Projetos</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
 
       {/* Cards principais compactos */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
@@ -255,9 +307,12 @@ export function Analytics() {
         </Card>
       </div>
 
-      {/* Cards financeiros detalhados */}
+      {/* Cards financeiros detalhados - clickable */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-        <Card className="lg:col-span-1 border-l-4 border-l-green-500">
+        <Card 
+          className="lg:col-span-1 border-l-4 border-l-green-500 cursor-pointer hover:shadow-lg transition-all"
+          onClick={() => handleCardClick('visao-geral')}
+        >
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-2">
               <DollarSign className="h-4 w-4 text-green-600" />
@@ -277,7 +332,10 @@ export function Analytics() {
           </CardContent>
         </Card>
 
-        <Card className="lg:col-span-1 border-l-4 border-l-blue-500">
+        <Card 
+          className="lg:col-span-1 border-l-4 border-l-blue-500 cursor-pointer hover:shadow-lg transition-all"
+          onClick={() => handleCardClick('performance')}
+        >
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-2">
               <BarChart3 className="h-4 w-4 text-blue-600" />
@@ -297,7 +355,10 @@ export function Analytics() {
           </CardContent>
         </Card>
 
-        <Card className="lg:col-span-1 border-l-4 border-l-red-500">
+        <Card 
+          className="lg:col-span-1 border-l-4 border-l-red-500 cursor-pointer hover:shadow-lg transition-all"
+          onClick={() => handleCardClick('financeiro')}
+        >
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-2">
               <TrendingUp className="h-4 w-4 text-red-600" />
@@ -317,7 +378,10 @@ export function Analytics() {
           </CardContent>
         </Card>
 
-        <Card className="lg:col-span-1 border-l-4 border-l-purple-500">
+        <Card 
+          className="lg:col-span-1 border-l-4 border-l-purple-500 cursor-pointer hover:shadow-lg transition-all"
+          onClick={() => handleCardClick('qualidade')}
+        >
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-2">
               <Award className="h-4 w-4 text-purple-600" />
@@ -335,7 +399,10 @@ export function Analytics() {
           </CardContent>
         </Card>
 
-        <Card className="lg:col-span-1 border-l-4 border-l-yellow-500">
+        <Card 
+          className="lg:col-span-1 border-l-4 border-l-yellow-500 cursor-pointer hover:shadow-lg transition-all"
+          onClick={() => handleCardClick('estrategico')}
+        >
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-2">
               <Clock className="h-4 w-4 text-yellow-600" />
@@ -354,9 +421,12 @@ export function Analytics() {
         </Card>
       </div>
 
-      {/* Cards financeiros detalhados segunda linha */}
+      {/* Cards financeiros detalhados segunda linha - clickable */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
-        <Card className="border-l-4 border-l-green-500">
+        <Card 
+          className="border-l-4 border-l-green-500 cursor-pointer hover:shadow-lg transition-all"
+          onClick={() => handleCardClick('ebitda')}
+        >
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-2">
               <DollarSign className="h-4 w-4 text-green-600" />
@@ -370,7 +440,10 @@ export function Analytics() {
           </CardContent>
         </Card>
 
-        <Card className="border-l-4 border-l-blue-500">
+        <Card 
+          className="border-l-4 border-l-blue-500 cursor-pointer hover:shadow-lg transition-all"
+          onClick={() => handleCardClick('margem-liquida')}
+        >
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-2">
               <BarChart3 className="h-4 w-4 text-blue-600" />
@@ -382,7 +455,10 @@ export function Analytics() {
           </CardContent>
         </Card>
 
-        <Card className="border-l-4 border-l-red-500">
+        <Card 
+          className="border-l-4 border-l-red-500 cursor-pointer hover:shadow-lg transition-all"
+          onClick={() => handleCardClick('fluxo-caixa')}
+        >
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-2">
               <TrendingUp className="h-4 w-4 text-red-600" />
@@ -396,7 +472,10 @@ export function Analytics() {
           </CardContent>
         </Card>
 
-        <Card className="border-l-4 border-l-purple-500">
+        <Card 
+          className="border-l-4 border-l-purple-500 cursor-pointer hover:shadow-lg transition-all"
+          onClick={() => handleCardClick('roi-medio')}
+        >
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-2">
               <Target className="h-4 w-4 text-purple-600" />
@@ -408,7 +487,10 @@ export function Analytics() {
           </CardContent>
         </Card>
 
-        <Card className="border-l-4 border-l-yellow-500">
+        <Card 
+          className="border-l-4 border-l-yellow-500 cursor-pointer hover:shadow-lg transition-all"
+          onClick={() => handleCardClick('payback')}
+        >
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-2">
               <Clock className="h-4 w-4 text-yellow-600" />
@@ -420,7 +502,10 @@ export function Analytics() {
           </CardContent>
         </Card>
 
-        <Card className="border-l-4 border-l-indigo-500">
+        <Card 
+          className="border-l-4 border-l-indigo-500 cursor-pointer hover:shadow-lg transition-all"
+          onClick={() => handleCardClick('npv')}
+        >
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-2">
               <TrendingUp className="h-4 w-4 text-indigo-600" />
@@ -471,16 +556,16 @@ export function Analytics() {
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={280}>
-              <BarChart data={teamData} layout="horizontal" margin={{ left: 5, right: 5, top: 5, bottom: 5 }}>
+              <BarChart data={teamData} layout="horizontal" margin={{ left: 80, right: 5, top: 5, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis type="number" fontSize={10} />
                 <YAxis 
                   dataKey="name" 
                   type="category" 
-                  width={60} 
+                  width={70} 
                   fontSize={10}
                 />
-                <Tooltip content={<CustomTooltip />} />
+                <Tooltip content={<TeamTooltip />} />
                 <Bar dataKey="value" fill="#10b981" />
               </BarChart>
             </ResponsiveContainer>
@@ -493,7 +578,7 @@ export function Analytics() {
         <Card>
           <CardHeader>
             <CardTitle>Evolução da Receita</CardTitle>
-            <p className="text-sm text-muted-foreground">Receita e lucratividade ao longo do tempo</p>
+            <p className="text-sm text-muted-foreground">Receita atual baseada nos projetos cadastrados</p>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>

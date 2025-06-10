@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { ArrowLeft, Plus, Download, FileText, Upload, X, User, Calendar as CalendarIcon, Flag, Clock, Target, DollarSign, Building, Edit, CheckCircle2, Trash2 } from "lucide-react";
 import { useProjects } from "../hooks/useProjects";
 import { Project, Risk, Task } from "../types/project";
@@ -21,12 +22,14 @@ import { currencyService } from "../services/currencyService";
 export function ProjectDetails() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { projects, toggleTask, addTask, addComment, addRisk, updateRisk } = useProjects();
+  const { projects, toggleTask, addTask, addComment, addRisk, updateRisk, updateProject, deleteProject } = useProjects();
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [project, setProject] = useState<Project | null>(null);
   const [newComment, setNewComment] = useState('');
   const [showTaskForm, setShowTaskForm] = useState(false);
+  const [showRiskForm, setShowRiskForm] = useState(false);
+  const [isDragOver, setIsDragOver] = useState(false);
   const [newRisk, setNewRisk] = useState({
     name: '',
     impact: 'médio' as Risk['impact'],
@@ -177,6 +180,7 @@ export function ProjectDetails() {
         contingencyPlan: '',
         status: 'ativo'
       });
+      setShowRiskForm(false);
     }
   };
 
@@ -184,29 +188,41 @@ export function ProjectDetails() {
     updateRisk(project.id, riskId, { status });
   };
 
+  const handleFinalizeProject = () => {
+    updateProject(project.id, { status: 'Finalizado' });
+  };
+
+  const handleDeleteProject = () => {
+    deleteProject(project.id);
+    navigate('/projects');
+  };
+
   const generateReport = () => {
     console.log('Gerando relatório:', project);
     alert('Funcionalidade de relatório será implementada em breve');
   };
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = event.target.files;
-    if (files && files.length > 0) {
-      console.log('Arquivos selecionados:', files);
-      alert(`${files.length} arquivo(s) selecionado(s). Upload será implementado em breve.`);
-    }
+  const handleFileUpload = (files: FileList) => {
+    console.log('Arquivos selecionados:', files);
+    alert(`${files.length} arquivo(s) selecionado(s). Upload será implementado em breve.`);
   };
 
   const handleDragOver = (event: React.DragEvent) => {
     event.preventDefault();
+    setIsDragOver(true);
+  };
+
+  const handleDragLeave = (event: React.DragEvent) => {
+    event.preventDefault();
+    setIsDragOver(false);
   };
 
   const handleDrop = (event: React.DragEvent) => {
     event.preventDefault();
+    setIsDragOver(false);
     const files = event.dataTransfer.files;
     if (files.length > 0) {
-      console.log('Arquivos soltos:', files);
-      alert(`${files.length} arquivo(s) solto(s). Upload será implementado em breve.`);
+      handleFileUpload(files);
     }
   };
 
@@ -235,18 +251,54 @@ export function ProjectDetails() {
             <Download className="w-4 h-4" />
             Exportar PDF
           </Button>
-          <Button variant="outline" className="gap-2">
+          <Button variant="outline" className="gap-2" onClick={() => navigate(`/projects/edit/${project.id}`)}>
             <Edit className="w-4 h-4" />
             Editar
           </Button>
-          <Button variant="outline" className="gap-2">
-            <CheckCircle2 className="w-4 h-4" />
-            Finalizar
-          </Button>
-          <Button variant="destructive" className="gap-2">
-            <Trash2 className="w-4 h-4" />
-            Excluir
-          </Button>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="outline" className="gap-2">
+                <CheckCircle2 className="w-4 h-4" />
+                Finalizar
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Finalizar Projeto</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Tem certeza que deseja finalizar este projeto? Esta ação não pode ser desfeita.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction onClick={handleFinalizeProject}>
+                  Finalizar
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="destructive" className="gap-2">
+                <Trash2 className="w-4 h-4" />
+                Excluir
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Excluir Projeto</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Tem certeza que deseja excluir este projeto? Esta ação não pode ser desfeita.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction onClick={handleDeleteProject} className="bg-red-600 hover:bg-red-700">
+                  Excluir
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
       </div>
 
@@ -613,8 +665,11 @@ export function ProjectDetails() {
             </CardHeader>
             <CardContent>
               <div 
-                className="border-2 border-dashed border-muted rounded-lg p-8 text-center hover:border-primary transition-colors cursor-pointer"
+                className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors cursor-pointer ${
+                  isDragOver ? 'border-primary bg-primary/10' : 'border-muted hover:border-primary'
+                }`}
                 onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
                 onDrop={handleDrop}
                 onClick={() => fileInputRef.current?.click()}
               >
@@ -642,7 +697,7 @@ export function ProjectDetails() {
                 type="file"
                 multiple
                 className="hidden"
-                onChange={handleFileUpload}
+                onChange={(e) => e.target.files && handleFileUpload(e.target.files)}
                 accept=".pdf,.docx,.xlsx,.csv,.txt,.png,.jpg,.jpeg,.svg"
               />
               
@@ -720,83 +775,95 @@ export function ProjectDetails() {
 
         <TabsContent value="risks" className="space-y-4">
           <Card>
-            <CardHeader>
-              <CardTitle>Adicionar Novo Risco</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label>Nome do Risco</Label>
-                  <Input
-                    value={newRisk.name}
-                    onChange={(e) => setNewRisk({...newRisk, name: e.target.value})}
-                    placeholder="Ex: Atraso na entrega"
-                  />
-                </div>
-                <div>
-                  <Label>Status</Label>
-                  <Select value={newRisk.status} onValueChange={(value: Risk['status']) => setNewRisk({...newRisk, status: value})}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="ativo">Ativo</SelectItem>
-                      <SelectItem value="mitigado">Mitigado</SelectItem>
-                      <SelectItem value="encerrado">Encerrado</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label>Impacto</Label>
-                  <Select value={newRisk.impact} onValueChange={(value: Risk['impact']) => setNewRisk({...newRisk, impact: value})}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="baixo">Baixo</SelectItem>
-                      <SelectItem value="médio">Médio</SelectItem>
-                      <SelectItem value="alto">Alto</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label>Probabilidade</Label>
-                  <Select value={newRisk.probability} onValueChange={(value: Risk['probability']) => setNewRisk({...newRisk, probability: value})}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="baixa">Baixa</SelectItem>
-                      <SelectItem value="média">Média</SelectItem>
-                      <SelectItem value="alta">Alta</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div>
-                <Label>Plano de Contingência</Label>
-                <Textarea
-                  value={newRisk.contingencyPlan}
-                  onChange={(e) => setNewRisk({...newRisk, contingencyPlan: e.target.value})}
-                  placeholder="Descreva as ações para mitigar este risco..."
-                />
-              </div>
-
-              <Button onClick={handleAddRisk} className="w-full">
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle>Riscos Identificados ({project.risks.length})</CardTitle>
+              <Button onClick={() => setShowRiskForm(!showRiskForm)} size="sm" variant="outline">
+                <Plus className="w-4 h-4 mr-2" />
                 Adicionar Risco
               </Button>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Riscos Identificados ({project.risks.length})</CardTitle>
             </CardHeader>
             <CardContent>
+              {showRiskForm && (
+                <Card className="mb-6">
+                  <CardHeader>
+                    <div className="flex justify-between items-center">
+                      <CardTitle>Adicionar Novo Risco</CardTitle>
+                      <Button variant="ghost" size="sm" onClick={() => setShowRiskForm(false)}>
+                        <X className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label>Nome do Risco</Label>
+                        <Input
+                          value={newRisk.name}
+                          onChange={(e) => setNewRisk({...newRisk, name: e.target.value})}
+                          placeholder="Ex: Atraso na entrega"
+                        />
+                      </div>
+                      <div>
+                        <Label>Status</Label>
+                        <Select value={newRisk.status} onValueChange={(value: Risk['status']) => setNewRisk({...newRisk, status: value})}>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="ativo">Ativo</SelectItem>
+                            <SelectItem value="mitigado">Mitigado</SelectItem>
+                            <SelectItem value="encerrado">Encerrado</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label>Impacto</Label>
+                        <Select value={newRisk.impact} onValueChange={(value: Risk['impact']) => setNewRisk({...newRisk, impact: value})}>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="baixo">Baixo</SelectItem>
+                            <SelectItem value="médio">Médio</SelectItem>
+                            <SelectItem value="alto">Alto</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label>Probabilidade</Label>
+                        <Select value={newRisk.probability} onValueChange={(value: Risk['probability']) => setNewRisk({...newRisk, probability: value})}>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="baixa">Baixa</SelectItem>
+                            <SelectItem value="média">Média</SelectItem>
+                            <SelectItem value="alta">Alta</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    <div>
+                      <Label>Plano de Contingência</Label>
+                      <Textarea
+                        value={newRisk.contingencyPlan}
+                        onChange={(e) => setNewRisk({...newRisk, contingencyPlan: e.target.value})}
+                        placeholder="Descreva as ações para mitigar este risco..."
+                      />
+                    </div>
+
+                    <Button onClick={handleAddRisk} className="w-full">
+                      <Plus className="w-4 h-4 mr-2" />
+                      Adicionar Risco
+                    </Button>
+                  </CardContent>
+                </Card>
+              )}
+
               {project.risks.length === 0 ? (
                 <p className="text-muted-foreground">Nenhum risco identificado ainda.</p>
               ) : (
