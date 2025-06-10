@@ -75,6 +75,7 @@ export interface HistoryEntry {
 export type FilterOptions = {
   search: string;
   status: string;
+  phase: string;
   tags: string[];
 };
 

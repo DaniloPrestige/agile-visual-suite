@@ -21,6 +21,10 @@ export function ProjectFilters({ filters, onFiltersChange, availableTags }: Proj
     onFiltersChange({ ...filters, status: value === "all" ? "" : value });
   };
 
+  const handlePhaseChange = (value: string) => {
+    onFiltersChange({ ...filters, phase: value === "all" ? "" : value });
+  };
+
   const handleTagToggle = (tag: string) => {
     const currentTags = filters.tags;
     const newTags = currentTags.includes(tag)
@@ -31,7 +35,7 @@ export function ProjectFilters({ filters, onFiltersChange, availableTags }: Proj
   };
 
   const clearFilters = () => {
-    onFiltersChange({ search: '', status: '', tags: [] });
+    onFiltersChange({ search: '', status: '', phase: '', tags: [] });
   };
 
   return (
@@ -56,6 +60,21 @@ export function ProjectFilters({ filters, onFiltersChange, availableTags }: Proj
             <SelectItem value="Finalizado">Finalizado</SelectItem>
             <SelectItem value="Atrasado">Atrasado</SelectItem>
             <SelectItem value="Cancelado">Cancelado</SelectItem>
+            <SelectItem value="Excluído">Excluído</SelectItem>
+          </SelectContent>
+        </Select>
+
+        <Select value={filters.phase || "all"} onValueChange={handlePhaseChange}>
+          <SelectTrigger className="w-full sm:w-48 h-10">
+            <SelectValue placeholder="Filtrar por fase" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todas as fases</SelectItem>
+            <SelectItem value="Iniciação">Iniciação</SelectItem>
+            <SelectItem value="Planejamento">Planejamento</SelectItem>
+            <SelectItem value="Execução">Execução</SelectItem>
+            <SelectItem value="Monitoramento">Monitoramento</SelectItem>
+            <SelectItem value="Encerramento">Encerramento</SelectItem>
           </SelectContent>
         </Select>
 

@@ -1,5 +1,6 @@
 
 import { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { ProjectCard } from '../components/ProjectCard';
 import { ProjectCardCompact } from '../components/ProjectCardCompact';
 import { ProjectForm } from '../components/ProjectForm';
@@ -10,29 +11,37 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Grid, List, Plus, BarChart3, Users, CheckCircle, AlertTriangle } from "lucide-react";
-import { Project } from '../types/project';
+import { Project, FilterOptions } from '../types/project';
 
 export function Projects() {
+  const navigate = useNavigate();
   const { projects, addProject, updateProject, deleteProject } = useProjects();
   const [showForm, setShowForm] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-  const [filters, setFilters] = useState({
-    status: 'all' as string,
-    phase: 'all' as string,
+  const [selectedProjects, setSelectedProjects] = useState<string[]>([]);
+  const [filters, setFilters] = useState<FilterOptions>({
+    status: '',
+    phase: '',
     search: '',
-    tags: [] as string[]
+    tags: []
   });
+
+  // Get all unique tags from projects
+  const availableTags = useMemo(() => {
+    const allTags = projects.flatMap(project => project.tags);
+    return Array.from(new Set(allTags));
+  }, [projects]);
 
   const filteredProjects = useMemo(() => {
     return projects.filter(project => {
       // Status filter
-      if (filters.status !== 'all' && project.status !== filters.status) {
+      if (filters.status && project.status !== filters.status) {
         return false;
       }
 
       // Phase filter
-      if (filters.phase !== 'all' && project.phase !== filters.phase) {
+      if (filters.phase && project.phase !== filters.phase) {
         return false;
       }
 
@@ -87,6 +96,22 @@ export function Projects() {
     deleteProject(id);
   };
 
+  const handleViewProject = (project: Project) => {
+    navigate(`/projects/${project.id}`);
+  };
+
+  const handleStatusChange = (id: string, status: Project['status']) => {
+    updateProject(id, { status });
+  };
+
+  const handleSelectProject = (id: string, selected: boolean) => {
+    if (selected) {
+      setSelectedProjects(prev => [...prev, id]);
+    } else {
+      setSelectedProjects(prev => prev.filter(projectId => projectId !== id));
+    }
+  };
+
   const openEditForm = (project: Project) => {
     setEditingProject(project);
     setShowForm(true);
@@ -102,7 +127,7 @@ export function Projects() {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold">🚀 Gerencie todos os seus projetos em um só lugar</h1>
+          <h1 className="text-xl">🚀 Gerencie todos os seus projetos em um só lugar</h1>
           <p className="text-muted-foreground text-sm mt-1">
             Organize, acompanhe e finalize seus projetos com eficiência
           </p>
@@ -158,7 +183,11 @@ export function Projects() {
 
       {/* Filters and View Toggle */}
       <div className="flex flex-col lg:flex-row gap-4 justify-between items-start lg:items-center">
-        <ProjectFilters filters={filters} onFiltersChange={setFilters} />
+        <ProjectFilters 
+          filters={filters} 
+          onFiltersChange={setFilters} 
+          availableTags={availableTags}
+        />
         
         <div className="flex items-center gap-2">
           <Badge variant="outline">
@@ -214,6 +243,7 @@ export function Projects() {
               <ProjectCard
                 key={project.id}
                 project={project}
+                onView={handleViewProject}
                 onEdit={openEditForm}
                 onDelete={handleDeleteProject}
               />
@@ -221,8 +251,13 @@ export function Projects() {
               <ProjectCardCompact
                 key={project.id}
                 project={project}
+                onView={handleViewProject}
                 onEdit={openEditForm}
                 onDelete={handleDeleteProject}
+                onStatusChange={handleStatusChange}
+                isSelected={selectedProjects.includes(project.id)}
+                onSelectChange={(selected) => handleSelectProject(project.id, selected)}
+                currentCurrency="BRL"
               />
             )
           ))}
@@ -238,9 +273,10 @@ export function Projects() {
             </DialogTitle>
           </DialogHeader>
           <ProjectForm
+            isOpen={showForm}
+            onClose={closeForm}
             project={editingProject}
             onSubmit={editingProject ? handleEditProject : handleCreateProject}
-            onCancel={closeForm}
           />
         </DialogContent>
       </Dialog>

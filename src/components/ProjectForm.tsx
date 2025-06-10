@@ -1,6 +1,4 @@
-
 import React, { useState, useEffect } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -150,176 +148,168 @@ export function ProjectForm({ isOpen, onClose, onSubmit, project }: ProjectFormP
   if (!isOpen) return null;
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>{project ? 'Editar Projeto' : 'Novo Projeto'}</DialogTitle>
-        </DialogHeader>
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="name">Nome do Projeto *</Label>
+          <Input
+            id="name"
+            value={formData.name}
+            onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+            placeholder="Digite o nome do projeto"
+            required
+          />
+        </div>
         
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="name">Nome do Projeto *</Label>
-              <Input
-                id="name"
-                value={formData.name}
-                onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                placeholder="Digite o nome do projeto"
-                required
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="client">Cliente *</Label>
-              <Input
-                id="client"
-                value={formData.client}
-                onChange={(e) => setFormData(prev => ({ ...prev, client: e.target.value }))}
-                placeholder="Nome do cliente"
-                required
-              />
-            </div>
-          </div>
+        <div className="space-y-2">
+          <Label htmlFor="client">Cliente *</Label>
+          <Input
+            id="client"
+            value={formData.client}
+            onChange={(e) => setFormData(prev => ({ ...prev, client: e.target.value }))}
+            placeholder="Nome do cliente"
+            required
+          />
+        </div>
+      </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="description">Descrição</Label>
-            <Textarea
-              id="description"
-              value={formData.description}
-              onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-              placeholder="Descreva o projeto..."
-              rows={3}
-            />
-          </div>
+      <div className="space-y-2">
+        <Label htmlFor="description">Descrição</Label>
+        <Textarea
+          id="description"
+          value={formData.description}
+          onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+          placeholder="Descreva o projeto..."
+          rows={3}
+        />
+      </div>
 
-          <div className="grid grid-cols-3 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="startDate">Data de Início *</Label>
-              <Input
-                id="startDate"
-                type="date"
-                value={formData.startDate}
-                onChange={(e) => setFormData(prev => ({ ...prev, startDate: e.target.value }))}
-                required
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="endDate">Previsão de Conclusão *</Label>
-              <Input
-                id="endDate"
-                type="date"
-                value={formData.endDate}
-                onChange={(e) => setFormData(prev => ({ ...prev, endDate: e.target.value }))}
-                required
-              />
-            </div>
+      <div className="grid grid-cols-3 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="startDate">Data de Início *</Label>
+          <Input
+            id="startDate"
+            type="date"
+            value={formData.startDate}
+            onChange={(e) => setFormData(prev => ({ ...prev, startDate: e.target.value }))}
+            required
+          />
+        </div>
+        
+        <div className="space-y-2">
+          <Label htmlFor="endDate">Previsão de Conclusão *</Label>
+          <Input
+            id="endDate"
+            type="date"
+            value={formData.endDate}
+            onChange={(e) => setFormData(prev => ({ ...prev, endDate: e.target.value }))}
+            required
+          />
+        </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="phase">Fase *</Label>
-              <Select value={formData.phase} onValueChange={(value: Project['phase']) => setFormData(prev => ({ ...prev, phase: value }))}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Iniciação">Iniciação</SelectItem>
-                  <SelectItem value="Planejamento">Planejamento</SelectItem>
-                  <SelectItem value="Execução">Execução</SelectItem>
-                  <SelectItem value="Monitoramento">Monitoramento</SelectItem>
-                  <SelectItem value="Encerramento">Encerramento</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
+        <div className="space-y-2">
+          <Label htmlFor="phase">Fase *</Label>
+          <Select value={formData.phase} onValueChange={(value: Project['phase']) => setFormData(prev => ({ ...prev, phase: value }))}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="Iniciação">Iniciação</SelectItem>
+              <SelectItem value="Planejamento">Planejamento</SelectItem>
+              <SelectItem value="Execução">Execução</SelectItem>
+              <SelectItem value="Monitoramento">Monitoramento</SelectItem>
+              <SelectItem value="Encerramento">Encerramento</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
 
-          <div className="grid grid-cols-3 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="currency">Moeda</Label>
-              <Select value={formData.currency} onValueChange={handleCurrencyChange}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="BRL">Real (R$)</SelectItem>
-                  <SelectItem value="USD">Dólar ($)</SelectItem>
-                  <SelectItem value="EUR">Euro (€)</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="initialValue">Valor Inicial</Label>
-              <Input
-                id="initialValue"
-                value={initialValueInput}
-                onChange={(e) => handleInitialValueChange(e.target.value)}
-                placeholder="0,00"
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="finalValue">Valor Final</Label>
-              <Input
-                id="finalValue"
-                value={finalValueInput}
-                onChange={(e) => handleFinalValueChange(e.target.value)}
-                placeholder="0,00"
-              />
-            </div>
-          </div>
+      <div className="grid grid-cols-3 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="currency">Moeda</Label>
+          <Select value={formData.currency} onValueChange={handleCurrencyChange}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="BRL">Real (R$)</SelectItem>
+              <SelectItem value="USD">Dólar ($)</SelectItem>
+              <SelectItem value="EUR">Euro (€)</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        
+        <div className="space-y-2">
+          <Label htmlFor="initialValue">Valor Inicial</Label>
+          <Input
+            id="initialValue"
+            value={initialValueInput}
+            onChange={(e) => handleInitialValueChange(e.target.value)}
+            placeholder="0,00"
+          />
+        </div>
+        
+        <div className="space-y-2">
+          <Label htmlFor="finalValue">Valor Final</Label>
+          <Input
+            id="finalValue"
+            value={finalValueInput}
+            onChange={(e) => handleFinalValueChange(e.target.value)}
+            placeholder="0,00"
+          />
+        </div>
+      </div>
 
-          <div className="space-y-2">
-            <Label>Equipe</Label>
-            <div className="flex gap-2">
-              <Input
-                value={currentTeamMember}
-                onChange={(e) => setCurrentTeamMember(e.target.value)}
-                placeholder="Nome do membro da equipe"
-                onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addTeamMember())}
-              />
-              <Button type="button" onClick={addTeamMember}>Adicionar</Button>
-            </div>
-            <div className="flex flex-wrap gap-2 mt-2">
-              {formData.team.map((member, index) => (
-                <Badge key={index} variant="secondary" className="flex items-center gap-1">
-                  {member}
-                  <X className="w-3 h-3 cursor-pointer" onClick={() => removeTeamMember(index)} />
-                </Badge>
-              ))}
-            </div>
-          </div>
+      <div className="space-y-2">
+        <Label>Pessoas Envolvidas</Label>
+        <div className="flex gap-2">
+          <Input
+            value={currentTeamMember}
+            onChange={(e) => setCurrentTeamMember(e.target.value)}
+            placeholder="Nome do membro da equipe"
+            onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addTeamMember())}
+          />
+          <Button type="button" onClick={addTeamMember}>Adicionar</Button>
+        </div>
+        <div className="flex flex-wrap gap-2 mt-2">
+          {formData.team.map((member, index) => (
+            <Badge key={index} variant="secondary" className="flex items-center gap-1">
+              {member}
+              <X className="w-3 h-3 cursor-pointer" onClick={() => removeTeamMember(index)} />
+            </Badge>
+          ))}
+        </div>
+      </div>
 
-          <div className="space-y-2">
-            <Label>Tags</Label>
-            <div className="flex gap-2">
-              <Input
-                value={currentTag}
-                onChange={(e) => setCurrentTag(e.target.value)}
-                placeholder="Digite uma tag"
-                onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addTag())}
-              />
-              <Button type="button" onClick={addTag}>Adicionar</Button>
-            </div>
-            <div className="flex flex-wrap gap-2 mt-2">
-              {formData.tags.map((tag, index) => (
-                <Badge key={index} variant="outline" className="flex items-center gap-1">
-                  #{tag}
-                  <X className="w-3 h-3 cursor-pointer" onClick={() => removeTag(index)} />
-                </Badge>
-              ))}
-            </div>
-          </div>
+      <div className="space-y-2">
+        <Label>Tags</Label>
+        <div className="flex gap-2">
+          <Input
+            value={currentTag}
+            onChange={(e) => setCurrentTag(e.target.value)}
+            placeholder="Digite uma tag"
+            onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addTag())}
+          />
+          <Button type="button" onClick={addTag}>Adicionar</Button>
+        </div>
+        <div className="flex flex-wrap gap-2 mt-2">
+          {formData.tags.map((tag, index) => (
+            <Badge key={index} variant="outline" className="flex items-center gap-1">
+              #{tag}
+              <X className="w-3 h-3 cursor-pointer" onClick={() => removeTag(index)} />
+            </Badge>
+          ))}
+        </div>
+      </div>
 
-          <div className="flex justify-end gap-2 pt-4">
-            <Button type="button" variant="outline" onClick={onClose}>
-              Cancelar
-            </Button>
-            <Button type="submit">
-              {project ? 'Atualizar' : 'Criar'} Projeto
-            </Button>
-          </div>
-        </form>
-      </DialogContent>
-    </Dialog>
+      <div className="flex justify-end gap-2 pt-4">
+        <Button type="button" variant="outline" onClick={onClose}>
+          Cancelar
+        </Button>
+        <Button type="submit">
+          {project ? 'Atualizar' : 'Criar'} Projeto
+        </Button>
+      </div>
+    </form>
   );
 }
