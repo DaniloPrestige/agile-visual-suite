@@ -1,9 +1,10 @@
+
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import { Dashboard } from './pages/Dashboard';
-import { Projects } from './pages/Projects';
+import { ProjectList } from './pages/ProjectList';
 import { ProjectDetails } from './pages/ProjectDetails';
 import { Analytics } from './pages/Analytics';
-import { NotFound } from './pages/NotFound';
+import NotFound from './pages/NotFound';
 import { Header } from './components/Header';
 import { Footer } from './components/Footer';
 import { KPIDetails } from './pages/analytics/KPIDetails';
@@ -18,7 +19,7 @@ function App() {
         <main className="container py-6">
           <Routes>
             <Route path="/" element={<Dashboard />} />
-            <Route path="/projects" element={<Projects />} />
+            <Route path="/projects" element={<ProjectList />} />
             <Route path="/projects/:id" element={<ProjectDetails />} />
             <Route path="/analytics" element={<Analytics />} />
             <Route path="/analytics/kpi" element={<KPIDetails />} />
