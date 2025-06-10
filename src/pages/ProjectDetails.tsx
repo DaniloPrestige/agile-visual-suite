@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
@@ -10,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, Plus, Download, FileText, Upload, X, User, Calendar as CalendarIcon, Flag, Clock, Target, DollarSign, Building } from "lucide-react";
+import { ArrowLeft, Plus, Download, FileText, Upload, X, User, Calendar as CalendarIcon, Flag, Clock, Target, DollarSign, Building, Edit, CheckCircle2, Trash2 } from "lucide-react";
 import { useProjects } from "../hooks/useProjects";
 import { Project, Risk, Task } from "../types/project";
 import { format } from "date-fns";
@@ -184,7 +185,6 @@ export function ProjectDetails() {
   };
 
   const generateReport = () => {
-    // TODO: Implement PDF export functionality
     console.log('Gerando relatório:', project);
     alert('Funcionalidade de relatório será implementada em breve');
   };
@@ -192,7 +192,6 @@ export function ProjectDetails() {
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (files && files.length > 0) {
-      // TODO: Implement file upload functionality
       console.log('Arquivos selecionados:', files);
       alert(`${files.length} arquivo(s) selecionado(s). Upload será implementado em breve.`);
     }
@@ -206,7 +205,6 @@ export function ProjectDetails() {
     event.preventDefault();
     const files = event.dataTransfer.files;
     if (files.length > 0) {
-      // TODO: Implement file upload functionality
       console.log('Arquivos soltos:', files);
       alert(`${files.length} arquivo(s) solto(s). Upload será implementado em breve.`);
     }
@@ -222,32 +220,39 @@ export function ProjectDetails() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4">
+      {/* Header com informações do projeto */}
+      <div className="flex items-center gap-4 mb-6">
         <Button variant="outline" onClick={() => navigate('/projects')}>
           <ArrowLeft className="w-4 h-4 mr-2" />
           Voltar
         </Button>
-        <h1 className="text-3xl font-bold flex-1">{project.name}</h1>
+        <div className="flex-1">
+          <h1 className="text-3xl font-bold">{project.name}</h1>
+          <p className="text-muted-foreground">Detalhes completos do projeto</p>
+        </div>
         <div className="flex gap-2">
           <Button onClick={generateReport} variant="outline" className="gap-2">
             <Download className="w-4 h-4" />
             Exportar PDF
           </Button>
           <Button variant="outline" className="gap-2">
+            <Edit className="w-4 h-4" />
             Editar
           </Button>
           <Button variant="outline" className="gap-2">
+            <CheckCircle2 className="w-4 h-4" />
             Finalizar
           </Button>
           <Button variant="destructive" className="gap-2">
+            <Trash2 className="w-4 h-4" />
             Excluir
           </Button>
         </div>
       </div>
 
-      {/* Header com informações principais */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        <Card className="lg:col-span-1">
+      {/* Cards principais com informações do projeto */}
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+        <Card>
           <CardHeader className="pb-3">
             <div className="flex items-center gap-2">
               <Building className="h-5 w-5 text-gray-600" />
@@ -255,11 +260,11 @@ export function ProjectDetails() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-xl font-bold text-gray-900">{project.client}</div>
+            <div className="text-2xl font-bold text-gray-900">{project.client}</div>
           </CardContent>
         </Card>
 
-        <Card className="lg:col-span-1">
+        <Card>
           <CardHeader className="pb-3">
             <div className="flex items-center gap-2">
               <User className="h-5 w-5 text-gray-600" />
@@ -267,13 +272,13 @@ export function ProjectDetails() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-xl font-bold text-gray-900">
+            <div className="text-2xl font-bold text-gray-900">
               {project.team.length > 0 ? project.team[0] : 'Não definido'}
             </div>
           </CardContent>
         </Card>
 
-        <Card className="lg:col-span-1">
+        <Card>
           <CardHeader className="pb-3">
             <div className="flex items-center gap-2">
               <Clock className="h-5 w-5 text-gray-600" />
@@ -281,13 +286,13 @@ export function ProjectDetails() {
             </div>
           </CardHeader>
           <CardContent>
-            <Badge className={getStatusColor(project.status)}>
+            <Badge className={`${getStatusColor(project.status)} text-base px-3 py-1`}>
               {project.status}
             </Badge>
           </CardContent>
         </Card>
 
-        <Card className="lg:col-span-1">
+        <Card>
           <CardHeader className="pb-3">
             <div className="flex items-center gap-2">
               <Target className="h-5 w-5 text-gray-600" />
@@ -300,7 +305,7 @@ export function ProjectDetails() {
         </Card>
       </div>
 
-      {/* Informações do projeto e resumo financeiro */}
+      {/* Informações detalhadas e resumo financeiro */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
@@ -342,7 +347,7 @@ export function ProjectDetails() {
                   <CalendarIcon className="h-4 w-4 text-gray-500" />
                   <span className="text-sm font-medium text-gray-600">Previsão de Conclusão</span>
                 </div>
-                <span>Não definida</span>
+                <span>{format(new Date(project.endDate), 'dd/MM/yyyy', { locale: ptBR })}</span>
               </div>
             </div>
 
@@ -456,7 +461,7 @@ export function ProjectDetails() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>Tarefas ({project.tasks.length})</CardTitle>
-              <Button onClick={() => setShowTaskForm(!showTaskForm)} size="sm">
+              <Button onClick={() => setShowTaskForm(!showTaskForm)} size="sm" variant="outline">
                 <Plus className="w-4 h-4 mr-2" />
                 Adicionar Tarefa
               </Button>
@@ -626,7 +631,7 @@ export function ProjectDetails() {
                       Tamanho máximo: 10MB por arquivo
                     </p>
                   </div>
-                  <Button variant="outline">
+                  <Button variant="outline" type="button">
                     <Upload className="w-4 h-4 mr-2" />
                     Selecionar Arquivos
                   </Button>

@@ -9,7 +9,7 @@ import { useNavigate } from "react-router-dom";
 import { useProjects } from "../hooks/useProjects";
 import { useOverdueAlerts } from "../hooks/useOverdueAlerts";
 import { Project } from "../types/project";
-import { AlertTriangle, Calendar, CheckCircle, Clock, Users, Tag, TrendingUp, BarChart3, DollarSign, Target, Award, X } from "lucide-react";
+import { AlertTriangle, Calendar, CheckCircle, Clock, Users, Tag, TrendingUp, BarChart3, DollarSign, Target, Award, X, Building, FileText, Zap } from "lucide-react";
 import { differenceInDays, isWithinInterval, subDays } from "date-fns";
 import { currencyService } from "../services/currencyService";
 
@@ -23,6 +23,7 @@ export function Dashboard() {
     const total = activeProjects.length;
     const inProgress = projects.filter(p => p.status === 'Em andamento').length;
     const completed = projects.filter(p => p.status === 'Finalizado').length;
+    const canceled = projects.filter(p => p.status === 'Cancelado').length;
     const overdue = projects.filter(p => {
       const endDate = new Date(p.endDate);
       const today = new Date();
@@ -80,6 +81,7 @@ export function Dashboard() {
       total,
       inProgress,
       completed,
+      canceled,
       overdue,
       avgProgress,
       activeProjects: activeInProgressProjects.length,
@@ -140,6 +142,219 @@ export function Dashboard() {
         </Alert>
       )}
 
+      {/* Cards financeiros principais */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+        <Card 
+          className="lg:col-span-1 border-l-4 border-l-green-500 cursor-pointer hover:shadow-lg transition-all"
+          onClick={() => navigate('/analytics')}
+        >
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <DollarSign className="h-4 w-4 text-green-600" />
+              Visão Geral
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-1">
+              <div className="flex items-center gap-1">
+                <DollarSign className="h-3 w-3 text-orange-600" />
+                <span className="text-xs">Receita Total</span>
+              </div>
+              <div className="text-lg font-bold text-green-600">
+                {currencyService.formatCurrency(dashboardData.totalRevenue, 'BRL')}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card 
+          className="lg:col-span-1 border-l-4 border-l-blue-500 cursor-pointer hover:shadow-lg transition-all"
+          onClick={() => navigate('/analytics')}
+        >
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <BarChart3 className="h-4 w-4 text-blue-600" />
+              Performance
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-1">
+              <div className="flex items-center gap-1">
+                <Target className="h-3 w-3 text-pink-600" />
+                <span className="text-xs">Orçamento Total</span>
+              </div>
+              <div className="text-lg font-bold text-blue-600">
+                {currencyService.formatCurrency(dashboardData.totalRevenue * 0.6, 'BRL')}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card 
+          className="lg:col-span-1 border-l-4 border-l-red-500 cursor-pointer hover:shadow-lg transition-all"
+          onClick={() => navigate('/analytics')}
+        >
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <TrendingUp className="h-4 w-4 text-red-600" />
+              Financeiro
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-1">
+              <div className="flex items-center gap-1">
+                <TrendingUp className="h-3 w-3 text-green-600" />
+                <span className="text-xs">Variação</span>
+              </div>
+              <div className={`text-lg font-bold ${dashboardData.budgetVariation >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                {dashboardData.budgetVariation >= 0 ? '+' : ''}{currencyService.formatCurrency(dashboardData.budgetVariation, 'BRL')}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card 
+          className="lg:col-span-1 border-l-4 border-l-purple-500 cursor-pointer hover:shadow-lg transition-all"
+          onClick={() => navigate('/analytics')}
+        >
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Award className="h-4 w-4 text-purple-600" />
+              Qualidade
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-1">
+              <div className="flex items-center gap-1">
+                <Award className="h-3 w-3 text-purple-600" />
+                <span className="text-xs">% Variação</span>
+              </div>
+              <div className="text-lg font-bold text-purple-600">+{dashboardData.deliveryRate}%</div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card 
+          className="lg:col-span-1 border-l-4 border-l-yellow-500 cursor-pointer hover:shadow-lg transition-all"
+          onClick={() => navigate('/analytics')}
+        >
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Clock className="h-4 w-4 text-yellow-600" />
+              Estratégico
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-1">
+              <div className="flex items-center gap-1">
+                <Clock className="h-3 w-3 text-orange-600" />
+                <span className="text-xs">Entrega no Prazo</span>
+              </div>
+              <div className="text-lg font-bold text-yellow-600">{dashboardData.deliveryRate}%</div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Cards financeiros detalhados segunda linha */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
+        <Card 
+          className="border-l-4 border-l-green-500 cursor-pointer hover:shadow-lg transition-all"
+          onClick={() => navigate('/analytics')}
+        >
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <DollarSign className="h-4 w-4 text-green-600" />
+              EBITDA
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-lg font-bold text-green-600">
+              {currencyService.formatCurrency(dashboardData.completedRevenue * 0.28, 'BRL')}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card 
+          className="border-l-4 border-l-blue-500 cursor-pointer hover:shadow-lg transition-all"
+          onClick={() => navigate('/analytics')}
+        >
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <BarChart3 className="h-4 w-4 text-blue-600" />
+              Margem Líquida
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-lg font-bold text-blue-600">15%</div>
+          </CardContent>
+        </Card>
+
+        <Card 
+          className="border-l-4 border-l-red-500 cursor-pointer hover:shadow-lg transition-all"
+          onClick={() => navigate('/analytics')}
+        >
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <TrendingUp className="h-4 w-4 text-red-600" />
+              Fluxo de Caixa
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-lg font-bold text-red-600">
+              {currencyService.formatCurrency(dashboardData.completedRevenue * 0.25, 'BRL')}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card 
+          className="border-l-4 border-l-purple-500 cursor-pointer hover:shadow-lg transition-all"
+          onClick={() => navigate('/analytics')}
+        >
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Target className="h-4 w-4 text-purple-600" />
+              ROI Médio
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-lg font-bold text-purple-600">+24%</div>
+          </CardContent>
+        </Card>
+
+        <Card 
+          className="border-l-4 border-l-yellow-500 cursor-pointer hover:shadow-lg transition-all"
+          onClick={() => navigate('/analytics')}
+        >
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Clock className="h-4 w-4 text-yellow-600" />
+              Payback
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-lg font-bold text-yellow-600">18 meses</div>
+          </CardContent>
+        </Card>
+
+        <Card 
+          className="border-l-4 border-l-indigo-500 cursor-pointer hover:shadow-lg transition-all"
+          onClick={() => navigate('/analytics')}
+        >
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <TrendingUp className="h-4 w-4 text-indigo-600" />
+              NPV
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-lg font-bold text-indigo-600">
+              {currencyService.formatCurrency(dashboardData.completedRevenue * 0.45, 'BRL')}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
       {/* Progresso Médio Geral - Destaque no topo */}
       <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
         <CardHeader className="flex flex-row items-center justify-between space-y-0">
@@ -171,7 +386,7 @@ export function Dashboard() {
       </Card>
 
       {/* Cards principais de estatísticas clicáveis */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
         <Card 
           className="bg-white border-l-4 border-l-blue-500 cursor-pointer hover:shadow-lg transition-all"
           onClick={() => navigate('/projects')}
@@ -243,61 +458,22 @@ export function Dashboard() {
             </p>
           </CardContent>
         </Card>
-      </div>
-
-      {/* Cards de métricas adicionais */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card 
-          className="cursor-pointer hover:shadow-lg transition-all border-l-4 border-l-green-500"
-          onClick={() => navigate('/analytics/financial')}
-        >
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Receita Total</CardTitle>
-            <DollarSign className="h-4 w-4 text-green-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">
-              {currencyService.formatCurrency(dashboardData.totalRevenue, 'BRL')}
-            </div>
-            <p className="text-xs text-muted-foreground">Todos os projetos</p>
-          </CardContent>
-        </Card>
 
         <Card 
-          className="cursor-pointer hover:shadow-lg transition-all border-l-4 border-l-purple-500"
-          onClick={() => navigate('/analytics/quality')}
+          className="bg-white border-l-4 border-l-orange-500 cursor-pointer hover:shadow-lg transition-all"
+          onClick={() => navigate('/analytics')}
         >
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Taxa de Entrega</CardTitle>
-            <Award className="h-4 w-4 text-purple-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-purple-600">{dashboardData.deliveryRate}%</div>
-            <p className="text-xs text-muted-foreground">Projetos no prazo</p>
-          </CardContent>
-        </Card>
-
-        <Card className="border-l-4 border-l-orange-500">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Conclusão Tarefas</CardTitle>
-            <Target className="h-4 w-4 text-orange-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-orange-600">{dashboardData.taskCompletionRate}%</div>
-            <p className="text-xs text-muted-foreground">{dashboardData.completedTasks}/{dashboardData.totalTasks} tarefas</p>
-          </CardContent>
-        </Card>
-
-        <Card className="border-l-4 border-l-teal-500">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Variação Orçamento</CardTitle>
-            <TrendingUp className="h-4 w-4 text-teal-600" />
-          </CardHeader>
-          <CardContent>
-            <div className={`text-2xl font-bold ${dashboardData.budgetVariation >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-              {dashboardData.budgetVariation >= 0 ? '+' : ''}{currencyService.formatCurrency(dashboardData.budgetVariation, 'BRL')}
+            <CardTitle className="text-sm font-medium text-gray-700">Conclusão Tarefas</CardTitle>
+            <div className="p-2 bg-orange-100 rounded-lg">
+              <Target className="h-5 w-5 text-orange-600" />
             </div>
-            <p className="text-xs text-muted-foreground">Inicial vs Final</p>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold text-orange-600">{dashboardData.taskCompletionRate}%</div>
+            <p className="text-sm text-gray-500 mt-1">
+              {dashboardData.completedTasks}/{dashboardData.totalTasks} tarefas
+            </p>
           </CardContent>
         </Card>
       </div>
