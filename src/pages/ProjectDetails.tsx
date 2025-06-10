@@ -281,7 +281,7 @@ export function ProjectDetails() {
             </div>
           </CardHeader>
           <CardContent>
-            <Badge className={getStatusColor(project.status)} size="lg">
+            <Badge className={getStatusColor(project.status)}>
               {project.status}
             </Badge>
           </CardContent>
