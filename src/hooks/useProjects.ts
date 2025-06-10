@@ -1,4 +1,3 @@
-
 import { useState, useCallback } from 'react';
 import { useLocalStorage } from './useLocalStorage';
 import { Project, Task, ProjectFile, Comment, Risk, HistoryEntry } from '../types/project';
