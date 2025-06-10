@@ -1,4 +1,3 @@
-
 import { useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -10,8 +9,9 @@ import { useNavigate } from "react-router-dom";
 import { useProjects } from "../hooks/useProjects";
 import { useOverdueAlerts } from "../hooks/useOverdueAlerts";
 import { Project } from "../types/project";
-import { AlertTriangle, Calendar, CheckCircle, Clock, Users, Tag, TrendingUp, BarChart3, Target, Award, X, Filter } from "lucide-react";
+import { AlertTriangle, Calendar, CheckCircle, Clock, Users, Tag, TrendingUp, BarChart3, Target, Award, X, Filter, DollarSign } from "lucide-react";
 import { differenceInDays, isWithinInterval, subDays } from "date-fns";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell, AreaChart, Area } from 'recharts';
 
 export function Dashboard() {
   const navigate = useNavigate();
@@ -90,6 +90,43 @@ export function Dashboard() {
     };
   }, [filteredProjects]);
 
+  // Dados para gráficos
+  const chartData = useMemo(() => {
+    const monthlyData = [
+      { name: 'Jan', projetos: 8, concluidos: 6, receita: 45000 },
+      { name: 'Fev', projetos: 12, concluidos: 9, receita: 52000 },
+      { name: 'Mar', projetos: 15, concluidos: 11, receita: 48000 },
+      { name: 'Abr', projetos: 18, concluidos: 14, receita: 58000 },
+      { name: 'Mai', projetos: 22, concluidos: 16, receita: 62000 },
+      { name: 'Jun', projetos: 25, concluidos: 19, receita: 68000 }
+    ];
+
+    const statusData = [
+      { name: 'Em Andamento', value: dashboardData.inProgress, color: '#3b82f6' },
+      { name: 'Finalizados', value: dashboardData.completed, color: '#22c55e' },
+      { name: 'Atrasados', value: dashboardData.overdue, color: '#ef4444' },
+      { name: 'Cancelados', value: dashboardData.canceled, color: '#6b7280' }
+    ];
+
+    const phaseData = filteredProjects.reduce((acc, project) => {
+      const phase = project.phase;
+      acc[phase] = (acc[phase] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+
+    const phaseChartData = Object.entries(phaseData).map(([phase, count]) => ({
+      name: phase,
+      value: count
+    }));
+
+    const teamData = [...new Set(filteredProjects.flatMap(p => p.team))].map(member => ({
+      name: member,
+      projetos: filteredProjects.filter(p => p.team.includes(member)).length
+    })).slice(0, 10);
+
+    return { monthlyData, statusData, phaseChartData, teamData };
+  }, [dashboardData, filteredProjects]);
+
   const getStatusColor = (status: Project['status']) => {
     switch (status) {
       case 'Em andamento':
@@ -108,6 +145,8 @@ export function Dashboard() {
   const getDaysUntilDeadline = (endDate: string) => {
     return differenceInDays(new Date(endDate), new Date());
   };
+
+  const COLORS = ['#3b82f6', '#22c55e', '#ef4444', '#6b7280', '#f59e0b', '#8b5cf6'];
 
   return (
     <div className="space-y-6">
@@ -269,6 +308,165 @@ export function Dashboard() {
             <p className="text-sm text-gray-500 mt-1">
               {dashboardData.completedTasks}/{dashboardData.totalTasks} tarefas
             </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Gráficos e Métricas */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Gráfico de Evolução Mensal */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <BarChart3 className="h-5 w-5 text-blue-600" />
+              Evolução Mensal de Projetos
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={300}>
+              <AreaChart data={chartData.monthlyData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="name" />
+                <YAxis />
+                <Tooltip />
+                <Area type="monotone" dataKey="projetos" stackId="1" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.6} />
+                <Area type="monotone" dataKey="concluidos" stackId="2" stroke="#22c55e" fill="#22c55e" fillOpacity={0.6} />
+              </AreaChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+
+        {/* Gráfico de Status dos Projetos */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Target className="h-5 w-5 text-green-600" />
+              Distribuição por Status
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={300}>
+              <PieChart>
+                <Pie
+                  data={chartData.statusData}
+                  cx="50%"
+                  cy="50%"
+                  labelLine={false}
+                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                  outerRadius={80}
+                  fill="#8884d8"
+                  dataKey="value"
+                >
+                  {chartData.statusData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  ))}
+                </Pie>
+                <Tooltip />
+              </PieChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+
+        {/* Gráfico de Receita */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <DollarSign className="h-5 w-5 text-green-600" />
+              Evolução da Receita
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={300}>
+              <LineChart data={chartData.monthlyData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="name" />
+                <YAxis />
+                <Tooltip formatter={(value) => [`R$ ${value.toLocaleString()}`, 'Receita']} />
+                <Line type="monotone" dataKey="receita" stroke="#22c55e" strokeWidth={3} />
+              </LineChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+
+        {/* Gráfico de Projetos por Fase */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Clock className="h-5 w-5 text-purple-600" />
+              Projetos por Fase
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={chartData.phaseChartData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="name" />
+                <YAxis />
+                <Tooltip />
+                <Bar dataKey="value" fill="#8b5cf6" />
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+
+        {/* Gráfico de Produtividade da Equipe */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5 text-indigo-600" />
+              Produtividade da Equipe
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={chartData.teamData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="name" angle={-45} textAnchor="end" height={80} />
+                <YAxis />
+                <Tooltip />
+                <Bar dataKey="projetos" fill="#6366f1" />
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+
+        {/* Métricas de Performance */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Award className="h-5 w-5 text-yellow-600" />
+              Métricas de Performance
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-gray-600">Taxa de Sucesso</span>
+              <div className="flex items-center gap-2">
+                <Progress value={85} className="w-20 h-2" />
+                <span className="text-sm font-medium">85%</span>
+              </div>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-gray-600">Pontualidade</span>
+              <div className="flex items-center gap-2">
+                <Progress value={78} className="w-20 h-2" />
+                <span className="text-sm font-medium">78%</span>
+              </div>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-gray-600">Qualidade</span>
+              <div className="flex items-center gap-2">
+                <Progress value={92} className="w-20 h-2" />
+                <span className="text-sm font-medium">92%</span>
+              </div>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-gray-600">Satisfação Cliente</span>
+              <div className="flex items-center gap-2">
+                <Progress value={88} className="w-20 h-2" />
+                <span className="text-sm font-medium">88%</span>
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>

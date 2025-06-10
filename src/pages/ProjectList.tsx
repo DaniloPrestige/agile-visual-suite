@@ -1,4 +1,3 @@
-
 import { useState, useMemo, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -241,7 +240,7 @@ export function ProjectList() {
       
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">🚀 Gerencie todos os seus projetos em um só lugar</h1>
+          <h1 className="text-lg text-gray-900 mb-2">Gerencie todos os seus projetos em um só lugar</h1>
         </div>
         <div className="flex items-center gap-4">
           <Button onClick={() => setIsFormOpen(true)} className="gap-2 bg-blue-600 hover:bg-blue-700">
@@ -288,6 +287,10 @@ export function ProjectList() {
             className="pl-10"
           />
         </div>
+        <Button variant="outline" onClick={handleExportProjects}>
+          <Download className="w-4 h-4 mr-2" />
+          Exportar PDF
+        </Button>
       </div>
 
       {selectedProjects.length > 0 && (
