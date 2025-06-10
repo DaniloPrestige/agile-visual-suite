@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { ArrowLeft, Plus, Download, FileText } from "lucide-react";
 import { useProjects } from "../hooks/useProjects";
-import { Project, Risk } from "../types/project";
+import { Project, Risk, Task } from "../types/project";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -30,6 +30,14 @@ export function ProjectDetails() {
     probability: 'média' as Risk['probability'],
     contingencyPlan: '',
     status: 'ativo' as Risk['status']
+  });
+  const [newTask, setNewTask] = useState({
+    title: '',
+    description: '',
+    priority: 'média' as Task['priority'],
+    status: 'pendente' as Task['status'],
+    assignee: '',
+    dueDate: ''
   });
 
   useEffect(() => {
@@ -80,9 +88,54 @@ export function ProjectDetails() {
   };
 
   const handleAddTask = () => {
-    if (newTaskTitle.trim()) {
-      addTask(project.id, newTaskTitle.trim());
-      setNewTaskTitle('');
+    if (newTask.title.trim()) {
+      addTask(project.id, {
+        title: newTask.title.trim(),
+        description: newTask.description.trim() || undefined,
+        priority: newTask.priority,
+        status: newTask.status,
+        assignee: newTask.assignee.trim() || undefined,
+        dueDate: newTask.dueDate || undefined
+      });
+      setNewTask({
+        title: '',
+        description: '',
+        priority: 'média',
+        status: 'pendente',
+        assignee: '',
+        dueDate: ''
+      });
+    }
+  };
+
+  const isTaskOverdue = (task: Task) => {
+    if (!task.dueDate || task.completed) return false;
+    return new Date(task.dueDate) < new Date();
+  };
+
+  const getTaskPriorityColor = (priority: Task['priority']) => {
+    switch (priority) {
+      case 'alta':
+        return 'bg-red-100 text-red-800';
+      case 'média':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'baixa':
+        return 'bg-green-100 text-green-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const getTaskStatusColor = (status: Task['status']) => {
+    switch (status) {
+      case 'concluída':
+        return 'bg-green-100 text-green-800';
+      case 'em andamento':
+        return 'bg-blue-100 text-blue-800';
+      case 'pendente':
+        return 'bg-gray-100 text-gray-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
     }
   };
 
@@ -245,18 +298,76 @@ export function ProjectDetails() {
             <CardHeader>
               <CardTitle>Adicionar Nova Tarefa</CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="flex gap-2">
-                <Input
-                  placeholder="Digite o título da tarefa..."
-                  value={newTaskTitle}
-                  onChange={(e) => setNewTaskTitle(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && handleAddTask()}
-                />
-                <Button onClick={handleAddTask}>
-                  <Plus className="w-4 h-4" />
-                </Button>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label>Título da Tarefa*</Label>
+                  <Input
+                    placeholder="Digite o título da tarefa..."
+                    value={newTask.title}
+                    onChange={(e) => setNewTask({...newTask, title: e.target.value})}
+                  />
+                </div>
+                <div>
+                  <Label>Responsável</Label>
+                  <Input
+                    placeholder="Nome do responsável..."
+                    value={newTask.assignee}
+                    onChange={(e) => setNewTask({...newTask, assignee: e.target.value})}
+                  />
+                </div>
               </div>
+
+              <div>
+                <Label>Descrição</Label>
+                <Textarea
+                  placeholder="Descrição da tarefa (opcional)..."
+                  value={newTask.description}
+                  onChange={(e) => setNewTask({...newTask, description: e.target.value})}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <Label>Prioridade</Label>
+                  <Select value={newTask.priority} onValueChange={(value: Task['priority']) => setNewTask({...newTask, priority: value})}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="baixa">Baixa</SelectItem>
+                      <SelectItem value="média">Média</SelectItem>
+                      <SelectItem value="alta">Alta</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label>Status</Label>
+                  <Select value={newTask.status} onValueChange={(value: Task['status']) => setNewTask({...newTask, status: value})}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="pendente">Pendente</SelectItem>
+                      <SelectItem value="em andamento">Em Andamento</SelectItem>
+                      <SelectItem value="concluída">Concluída</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label>Data de Vencimento</Label>
+                  <Input
+                    type="date"
+                    value={newTask.dueDate}
+                    onChange={(e) => setNewTask({...newTask, dueDate: e.target.value})}
+                  />
+                </div>
+              </div>
+
+              <Button onClick={handleAddTask} className="w-full">
+                <Plus className="w-4 h-4 mr-2" />
+                Adicionar Tarefa
+              </Button>
             </CardContent>
           </Card>
 
@@ -268,16 +379,50 @@ export function ProjectDetails() {
               {project.tasks.length === 0 ? (
                 <p className="text-muted-foreground">Nenhuma tarefa adicionada ainda.</p>
               ) : (
-                <div className="space-y-2">
+                <div className="space-y-3">
                   {project.tasks.map((task) => (
-                    <div key={task.id} className="flex items-center space-x-2 p-2 border rounded">
-                      <Checkbox
-                        checked={task.completed}
-                        onCheckedChange={() => toggleTask(project.id, task.id)}
-                      />
-                      <span className={task.completed ? 'line-through text-muted-foreground' : ''}>
-                        {task.title}
-                      </span>
+                    <div key={task.id} className="border rounded-lg p-4">
+                      <div className="flex items-start justify-between mb-2">
+                        <div className="flex items-center space-x-2">
+                          <Checkbox
+                            checked={task.completed}
+                            onCheckedChange={() => toggleTask(project.id, task.id)}
+                          />
+                          <div>
+                            <h4 className={`font-medium ${task.completed ? 'line-through text-muted-foreground' : ''}`}>
+                              {task.title}
+                            </h4>
+                            {task.description && (
+                              <p className="text-sm text-muted-foreground mt-1">
+                                {task.description}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex gap-2">
+                          <Badge className={getTaskPriorityColor(task.priority)}>
+                            {task.priority}
+                          </Badge>
+                          <Badge className={getTaskStatusColor(task.status)}>
+                            {task.status}
+                          </Badge>
+                          {isTaskOverdue(task) && (
+                            <Badge variant="destructive">
+                              Atrasada
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                      
+                      <div className="text-sm text-muted-foreground space-y-1">
+                        {task.assignee && (
+                          <div>Responsável: {task.assignee}</div>
+                        )}
+                        {task.dueDate && (
+                          <div>Vencimento: {format(new Date(task.dueDate), 'dd/MM/yyyy', { locale: ptBR })}</div>
+                        )}
+                        <div>Criada em: {formatDate(task.createdAt)}</div>
+                      </div>
                     </div>
                   ))}
                 </div>

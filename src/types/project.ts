@@ -25,6 +25,11 @@ export interface Task {
   id: string;
   projectId: string;
   title: string;
+  description?: string;
+  priority: 'baixa' | 'média' | 'alta';
+  status: 'pendente' | 'em andamento' | 'concluída';
+  assignee?: string;
+  dueDate?: string;
   completed: boolean;
   createdAt: string;
 }

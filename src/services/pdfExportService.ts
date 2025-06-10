@@ -219,6 +219,6 @@ export class PDFExportService {
     pdf.setFont('helvetica', 'italic');
     pdf.setTextColor(100, 100, 100);
     pdf.text(`Relatorio gerado em ${new Date().toLocaleString('pt-BR')}`, margin, pageHeight - 15);
-    pdf.text('Agile Canvas - Sistema de Gestao de Projetos', pageWidth - margin - 60, pageHeight - 15);
+    pdf.text('Sistema de Gestao de Projetos - Criado por Danilo Araujo', pageWidth - margin - 80, pageHeight - 15);
   }
 }

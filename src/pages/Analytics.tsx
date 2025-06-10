@@ -1,4 +1,3 @@
-
 import { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -44,6 +43,9 @@ export function Analytics() {
     const onTimeProjects = projects.filter(p => p.status === 'Finalizado' && new Date(p.endDate) >= new Date()).length;
     const deliveryRate = completed > 0 ? Math.round((onTimeProjects / completed) * 100) : 100;
 
+    // KPI Principal
+    const kpiScore = Math.round((deliveryRate + avgProgress + (completed / total * 100 || 0)) / 3);
+
     // Projetos por tag
     const tagStats = activeProjects.flatMap(p => p.tags).reduce((acc, tag) => {
       acc[tag] = (acc[tag] || 0) + 1;
@@ -86,6 +88,7 @@ export function Analytics() {
       completedRevenue,
       budgetVariation,
       deliveryRate,
+      kpiScore,
       tagStats,
       teamStats,
       overdueDetails,
@@ -111,12 +114,6 @@ export function Analytics() {
     .sort((a, b) => b.value - a.value)
     .slice(0, 10);
 
-  const handleKPIClick = (type: string) => {
-    console.log(`Clicked on KPI: ${type}`);
-    // Implementar navegação específica para cada KPI
-    navigate('/projects');
-  };
-
   return (
     <div className="space-y-6">
       <h1 className="text-3xl font-bold">Analytics</h1>
@@ -124,11 +121,30 @@ export function Analytics() {
       {/* Cards principais de KPIs clicáveis */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <Card 
-          className="cursor-pointer hover:shadow-lg transition-all border-l-4 border-l-green-500"
-          onClick={() => handleKPIClick('revenue')}
+          className="cursor-pointer hover:shadow-lg transition-all border-l-4 border-l-blue-500"
+          onClick={() => navigate('/analytics/kpi')}
         >
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Visão Geral</CardTitle>
+            <CardTitle className="text-sm font-medium">KPI Geral</CardTitle>
+            <BarChart3 className="h-4 w-4 text-blue-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-lg font-bold">Score Geral</div>
+            <div className="text-2xl font-bold text-blue-600">
+              {analytics.kpiScore}%
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Baseado em entrega, progresso e conclusão
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card 
+          className="cursor-pointer hover:shadow-lg transition-all border-l-4 border-l-green-500"
+          onClick={() => navigate('/analytics/financial')}
+        >
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Financeiro</CardTitle>
             <DollarSign className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
@@ -140,64 +156,16 @@ export function Analytics() {
         </Card>
 
         <Card 
-          className="cursor-pointer hover:shadow-lg transition-all border-l-4 border-l-blue-500"
-          onClick={() => handleKPIClick('performance')}
-        >
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Performance</CardTitle>
-            <BarChart3 className="h-4 w-4 text-blue-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-lg font-bold">Orçamento Total</div>
-            <div className="text-2xl font-bold text-blue-600">
-              {currencyService.formatCurrency(analytics.totalRevenue, 'BRL')}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card 
           className="cursor-pointer hover:shadow-lg transition-all border-l-4 border-l-purple-500"
-          onClick={() => handleKPIClick('financial')}
-        >
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Financeiro</CardTitle>
-            <TrendingUp className="h-4 w-4 text-purple-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-lg font-bold">Variação</div>
-            <div className={`text-2xl font-bold ${analytics.budgetVariation >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-              +{currencyService.formatCurrency(Math.abs(analytics.budgetVariation), 'BRL')}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card 
-          className="cursor-pointer hover:shadow-lg transition-all border-l-4 border-l-yellow-500"
-          onClick={() => handleKPIClick('quality')}
+          onClick={() => navigate('/analytics/quality')}
         >
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Qualidade</CardTitle>
-            <Award className="h-4 w-4 text-yellow-600" />
+            <Award className="h-4 w-4 text-purple-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-lg font-bold">% Variação</div>
-            <div className="text-2xl font-bold text-yellow-600">
-              +{analytics.budgetVariation >= 0 ? '0' : Math.abs(Math.round((analytics.budgetVariation / analytics.totalRevenue) * 100))}%
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card 
-          className="cursor-pointer hover:shadow-lg transition-all border-l-4 border-l-orange-500"
-          onClick={() => handleKPIClick('strategic')}
-        >
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Estratégico</CardTitle>
-            <Target className="h-4 w-4 text-orange-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-lg font-bold">Entrega no Prazo</div>
-            <div className="text-2xl font-bold text-orange-600">{analytics.deliveryRate}%</div>
+            <div className="text-lg font-bold">Taxa de Entrega</div>
+            <div className="text-2xl font-bold text-purple-600">{analytics.deliveryRate}%</div>
           </CardContent>
         </Card>
       </div>

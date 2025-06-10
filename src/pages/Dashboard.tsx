@@ -1,4 +1,3 @@
-
 import { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -79,15 +78,10 @@ export function Dashboard() {
   };
 
   return (
-    <div className="space-y-8">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">📊 Dashboard</h1>
-          <p className="text-gray-600">Visão geral dos seus projetos e métricas importantes</p>
-        </div>
-        <Button onClick={() => navigate('/projects')} className="bg-blue-600 hover:bg-blue-700">
-          Ver Todos os Projetos
-        </Button>
+    <div className="space-y-6">
+      <div className="text-center space-y-4">
+        <h1 className="text-4xl font-bold">Dashboard</h1>
+        <p className="text-muted-foreground text-sm">Gerencie seus projetos</p>
       </div>
 
       {/* Progresso Médio Geral - Destaque no topo */}

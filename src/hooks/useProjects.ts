@@ -60,12 +60,24 @@ export function useProjects() {
     setProjects(prev => prev.filter(project => project.id !== id));
   }, [setProjects]);
 
-  const addTask = useCallback((projectId: string, title: string) => {
+  const addTask = useCallback((projectId: string, taskData: {
+    title: string;
+    description?: string;
+    priority: 'baixa' | 'média' | 'alta';
+    status: 'pendente' | 'em andamento' | 'concluída';
+    assignee?: string;
+    dueDate?: string;
+  }) => {
     const newTask: Task = {
       id: crypto.randomUUID(),
       projectId,
-      title,
-      completed: false,
+      title: taskData.title,
+      description: taskData.description,
+      priority: taskData.priority,
+      status: taskData.status,
+      assignee: taskData.assignee,
+      dueDate: taskData.dueDate,
+      completed: taskData.status === 'concluída',
       createdAt: new Date().toISOString()
     };
 
@@ -82,7 +94,45 @@ export function useProjects() {
             id: crypto.randomUUID(),
             projectId,
             action: 'Tarefa adicionada',
-            details: `Nova tarefa: "${title}"`,
+            details: `Nova tarefa: "${taskData.title}" (${taskData.priority} prioridade)`,
+            timestamp: new Date().toISOString(),
+            user: 'Sistema'
+          }]
+        };
+      }
+      return project;
+    }));
+  }, [setProjects]);
+
+  const updateTask = useCallback((projectId: string, taskId: string, updates: Partial<Task>) => {
+    setProjects(prev => prev.map(project => {
+      if (project.id === projectId) {
+        const updatedTasks = project.tasks.map(task => {
+          if (task.id === taskId) {
+            const updatedTask = { ...task, ...updates };
+            // Se o status mudou para concluída, marcar como completed
+            if (updates.status === 'concluída') {
+              updatedTask.completed = true;
+            } else if (updates.status && updates.status !== 'concluída') {
+              updatedTask.completed = false;
+            }
+            return updatedTask;
+          }
+          return task;
+        });
+        
+        const progress = Math.round((updatedTasks.filter(t => t.completed).length / updatedTasks.length) * 100) || 0;
+        
+        const task = project.tasks.find(t => t.id === taskId);
+        return {
+          ...project,
+          tasks: updatedTasks,
+          progress,
+          history: [...project.history, {
+            id: crypto.randomUUID(),
+            projectId,
+            action: 'Tarefa atualizada',
+            details: `Tarefa "${task?.title}" foi modificada`,
             timestamp: new Date().toISOString(),
             user: 'Sistema'
           }]
@@ -95,9 +145,18 @@ export function useProjects() {
   const toggleTask = useCallback((projectId: string, taskId: string) => {
     setProjects(prev => prev.map(project => {
       if (project.id === projectId) {
-        const updatedTasks = project.tasks.map(task => 
-          task.id === taskId ? { ...task, completed: !task.completed } : task
-        );
+        const updatedTasks = project.tasks.map(task => {
+          if (task.id === taskId) {
+            const newCompleted = !task.completed;
+            return { 
+              ...task, 
+              completed: newCompleted,
+              status: newCompleted ? 'concluída' : 'pendente'
+            };
+          }
+          return task;
+        });
+        
         const progress = Math.round((updatedTasks.filter(t => t.completed).length / updatedTasks.length) * 100) || 0;
         
         const task = project.tasks.find(t => t.id === taskId);
@@ -205,6 +264,7 @@ export function useProjects() {
     updateProject,
     deleteProject,
     addTask,
+    updateTask,
     toggleTask,
     addComment,
     addRisk,
