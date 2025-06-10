@@ -1,3 +1,4 @@
+
 import { useState, useCallback } from 'react';
 import { useLocalStorage } from './useLocalStorage';
 import { Project, Task, ProjectFile, Comment, Risk, HistoryEntry } from '../types/project';
@@ -148,7 +149,7 @@ export function useProjects() {
         const updatedTasks = project.tasks.map(task => {
           if (task.id === taskId) {
             const newCompleted = !task.completed;
-            const newStatus: 'pendente' | 'em andamento' | 'concluída' = newCompleted ? 'concluída' : 'pendente';
+            const newStatus: Task['status'] = newCompleted ? 'concluída' : 'pendente';
             return { 
               ...task, 
               completed: newCompleted,

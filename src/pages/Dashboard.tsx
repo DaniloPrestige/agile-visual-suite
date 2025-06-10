@@ -1,17 +1,22 @@
+
 import { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useNavigate } from "react-router-dom";
 import { useProjects } from "../hooks/useProjects";
+import { useOverdueAlerts } from "../hooks/useOverdueAlerts";
 import { Project } from "../types/project";
-import { AlertTriangle, Calendar, CheckCircle, Clock, Users, Tag, TrendingUp, BarChart3 } from "lucide-react";
+import { AlertTriangle, Calendar, CheckCircle, Clock, Users, Tag, TrendingUp, BarChart3, DollarSign, Target, Award, X } from "lucide-react";
 import { differenceInDays, isWithinInterval, subDays } from "date-fns";
+import { currencyService } from "../services/currencyService";
 
 export function Dashboard() {
   const navigate = useNavigate();
   const { projects } = useProjects();
+  const { shouldShowAlert, dismissAlert } = useOverdueAlerts(projects);
 
   const dashboardData = useMemo(() => {
     const activeProjects = projects.filter(p => p.status !== 'Excluído');
@@ -30,6 +35,24 @@ export function Dashboard() {
       ? Math.round(activeInProgressProjects.reduce((sum, p) => sum + p.progress, 0) / activeInProgressProjects.length)
       : 0;
 
+    // Cálculos financeiros
+    const totalRevenue = activeProjects.reduce((sum, p) => sum + (p.finalValue || p.initialValue || 0), 0);
+    const completedRevenue = projects.filter(p => p.status === 'Finalizado').reduce((sum, p) => sum + (p.finalValue || p.initialValue || 0), 0);
+    const budgetVariation = activeProjects.reduce((sum, p) => {
+      const initial = p.initialValue || 0;
+      const final = p.finalValue || 0;
+      return sum + (final - initial);
+    }, 0);
+
+    // Métricas de qualidade
+    const onTimeProjects = projects.filter(p => p.status === 'Finalizado' && new Date(p.endDate) >= new Date()).length;
+    const deliveryRate = completed > 0 ? Math.round((onTimeProjects / completed) * 100) : 100;
+
+    // Total de tarefas
+    const totalTasks = activeProjects.reduce((sum, p) => sum + p.tasks.length, 0);
+    const completedTasks = activeProjects.reduce((sum, p) => sum + p.tasks.filter(t => t.completed).length, 0);
+    const taskCompletionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+
     // Projetos recentes (últimos 7 dias)
     const recentProjects = projects.filter(p => {
       const startDate = new Date(p.startDate);
@@ -46,6 +69,13 @@ export function Dashboard() {
       return endDate >= today && endDate <= nextWeek && p.status !== 'Finalizado' && p.status !== 'Excluído';
     });
 
+    // Projetos atrasados
+    const overdueProjects = projects.filter(p => {
+      const endDate = new Date(p.endDate);
+      const today = new Date();
+      return endDate < today && p.status !== 'Finalizado' && p.status !== 'Cancelado' && p.status !== 'Excluído';
+    });
+
     return {
       total,
       inProgress,
@@ -54,7 +84,15 @@ export function Dashboard() {
       avgProgress,
       activeProjects: activeInProgressProjects.length,
       recentProjects,
-      upcomingDeadlines
+      upcomingDeadlines,
+      overdueProjects,
+      totalRevenue,
+      completedRevenue,
+      budgetVariation,
+      deliveryRate,
+      totalTasks,
+      completedTasks,
+      taskCompletionRate
     };
   }, [projects]);
 
@@ -83,6 +121,24 @@ export function Dashboard() {
         <h1 className="text-4xl font-bold">Dashboard</h1>
         <p className="text-muted-foreground text-sm">Gerencie seus projetos</p>
       </div>
+
+      {/* Alerta de projetos atrasados */}
+      {shouldShowAlert && dashboardData.overdueProjects.length > 0 && (
+        <Alert className="border-red-200 bg-red-50">
+          <AlertTriangle className="h-4 w-4 text-red-600" />
+          <AlertDescription className="flex justify-between items-center">
+            <span>
+              <strong>Atenção!</strong> Você tem {dashboardData.overdueProjects.length} projeto(s) atrasado(s). 
+              <Button variant="link" className="p-0 h-auto text-red-600 underline ml-1" onClick={() => navigate('/analytics')}>
+                Ver detalhes
+              </Button>
+            </span>
+            <Button variant="ghost" size="sm" onClick={dismissAlert}>
+              <X className="h-4 w-4" />
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* Progresso Médio Geral - Destaque no topo */}
       <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
@@ -114,9 +170,12 @@ export function Dashboard() {
         </CardContent>
       </Card>
 
-      {/* Cards principais de estatísticas - REMOVIDO onClick */}
+      {/* Cards principais de estatísticas clicáveis */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card className="bg-white border-l-4 border-l-blue-500">
+        <Card 
+          className="bg-white border-l-4 border-l-blue-500 cursor-pointer hover:shadow-lg transition-all"
+          onClick={() => navigate('/projects')}
+        >
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-gray-700">Total de Projetos</CardTitle>
             <div className="p-2 bg-blue-100 rounded-lg">
@@ -131,7 +190,10 @@ export function Dashboard() {
           </CardContent>
         </Card>
 
-        <Card className="bg-white border-l-4 border-l-blue-500">
+        <Card 
+          className="bg-white border-l-4 border-l-blue-500 cursor-pointer hover:shadow-lg transition-all"
+          onClick={() => navigate('/analytics')}
+        >
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-gray-700">Em Andamento</CardTitle>
             <div className="p-2 bg-blue-100 rounded-lg">
@@ -146,7 +208,10 @@ export function Dashboard() {
           </CardContent>
         </Card>
 
-        <Card className="bg-white border-l-4 border-l-green-500">
+        <Card 
+          className="bg-white border-l-4 border-l-green-500 cursor-pointer hover:shadow-lg transition-all"
+          onClick={() => navigate('/analytics')}
+        >
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-gray-700">Finalizados</CardTitle>
             <div className="p-2 bg-green-100 rounded-lg">
@@ -161,7 +226,10 @@ export function Dashboard() {
           </CardContent>
         </Card>
 
-        <Card className="bg-white border-l-4 border-l-red-500">
+        <Card 
+          className="bg-white border-l-4 border-l-red-500 cursor-pointer hover:shadow-lg transition-all"
+          onClick={() => navigate('/analytics')}
+        >
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-gray-700">Atrasados</CardTitle>
             <div className="p-2 bg-red-100 rounded-lg">
@@ -173,6 +241,63 @@ export function Dashboard() {
             <p className="text-sm text-gray-500 mt-1">
               Projetos que passaram do prazo
             </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Cards de métricas adicionais */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <Card 
+          className="cursor-pointer hover:shadow-lg transition-all border-l-4 border-l-green-500"
+          onClick={() => navigate('/analytics/financial')}
+        >
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Receita Total</CardTitle>
+            <DollarSign className="h-4 w-4 text-green-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600">
+              {currencyService.formatCurrency(dashboardData.totalRevenue, 'BRL')}
+            </div>
+            <p className="text-xs text-muted-foreground">Todos os projetos</p>
+          </CardContent>
+        </Card>
+
+        <Card 
+          className="cursor-pointer hover:shadow-lg transition-all border-l-4 border-l-purple-500"
+          onClick={() => navigate('/analytics/quality')}
+        >
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Taxa de Entrega</CardTitle>
+            <Award className="h-4 w-4 text-purple-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-purple-600">{dashboardData.deliveryRate}%</div>
+            <p className="text-xs text-muted-foreground">Projetos no prazo</p>
+          </CardContent>
+        </Card>
+
+        <Card className="border-l-4 border-l-orange-500">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Conclusão Tarefas</CardTitle>
+            <Target className="h-4 w-4 text-orange-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-orange-600">{dashboardData.taskCompletionRate}%</div>
+            <p className="text-xs text-muted-foreground">{dashboardData.completedTasks}/{dashboardData.totalTasks} tarefas</p>
+          </CardContent>
+        </Card>
+
+        <Card className="border-l-4 border-l-teal-500">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Variação Orçamento</CardTitle>
+            <TrendingUp className="h-4 w-4 text-teal-600" />
+          </CardHeader>
+          <CardContent>
+            <div className={`text-2xl font-bold ${dashboardData.budgetVariation >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+              {dashboardData.budgetVariation >= 0 ? '+' : ''}{currencyService.formatCurrency(dashboardData.budgetVariation, 'BRL')}
+            </div>
+            <p className="text-xs text-muted-foreground">Inicial vs Final</p>
           </CardContent>
         </Card>
       </div>

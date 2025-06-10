@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -10,20 +10,22 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, Plus, Download, FileText } from "lucide-react";
+import { ArrowLeft, Plus, Download, FileText, Upload, X, User, Calendar as CalendarIcon, Flag, Clock, Target, DollarSign, Building } from "lucide-react";
 import { useProjects } from "../hooks/useProjects";
 import { Project, Risk, Task } from "../types/project";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { currencyService } from "../services/currencyService";
 
 export function ProjectDetails() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { projects, toggleTask, addTask, addComment, addRisk, updateRisk } = useProjects();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [project, setProject] = useState<Project | null>(null);
-  const [newTaskTitle, setNewTaskTitle] = useState('');
   const [newComment, setNewComment] = useState('');
+  const [showTaskForm, setShowTaskForm] = useState(false);
   const [newRisk, setNewRisk] = useState({
     name: '',
     impact: 'médio' as Risk['impact'],
@@ -71,6 +73,23 @@ export function ProjectDetails() {
     }
   };
 
+  const getPhaseColor = (phase: Project['phase']) => {
+    switch (phase) {
+      case 'Iniciação':
+        return 'text-blue-600';
+      case 'Planejamento':
+        return 'text-yellow-600';
+      case 'Execução':
+        return 'text-orange-600';
+      case 'Monitoramento':
+        return 'text-purple-600';
+      case 'Encerramento':
+        return 'text-green-600';
+      default:
+        return 'text-gray-600';
+    }
+  };
+
   const getRiskColor = (impact: Risk['impact'], probability: Risk['probability']) => {
     const level = (impact === 'alto' || probability === 'alta') ? 'alto' : 
                   (impact === 'médio' || probability === 'média') ? 'médio' : 'baixo';
@@ -105,6 +124,7 @@ export function ProjectDetails() {
         assignee: '',
         dueDate: ''
       });
+      setShowTaskForm(false);
     }
   };
 
@@ -169,6 +189,29 @@ export function ProjectDetails() {
     alert('Funcionalidade de relatório será implementada em breve');
   };
 
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (files && files.length > 0) {
+      // TODO: Implement file upload functionality
+      console.log('Arquivos selecionados:', files);
+      alert(`${files.length} arquivo(s) selecionado(s). Upload será implementado em breve.`);
+    }
+  };
+
+  const handleDragOver = (event: React.DragEvent) => {
+    event.preventDefault();
+  };
+
+  const handleDrop = (event: React.DragEvent) => {
+    event.preventDefault();
+    const files = event.dataTransfer.files;
+    if (files.length > 0) {
+      // TODO: Implement file upload functionality
+      console.log('Arquivos soltos:', files);
+      alert(`${files.length} arquivo(s) solto(s). Upload será implementado em breve.`);
+    }
+  };
+
   const formatDate = (dateString: string) => {
     try {
       return format(new Date(dateString), 'dd/MM/yyyy HH:mm', { locale: ptBR });
@@ -185,35 +228,161 @@ export function ProjectDetails() {
           Voltar
         </Button>
         <h1 className="text-3xl font-bold flex-1">{project.name}</h1>
-        <Button onClick={generateReport} className="gap-2">
-          <FileText className="w-4 h-4" />
-          Gerar Relatório
-        </Button>
+        <div className="flex gap-2">
+          <Button onClick={generateReport} variant="outline" className="gap-2">
+            <Download className="w-4 h-4" />
+            Exportar PDF
+          </Button>
+          <Button variant="outline" className="gap-2">
+            Editar
+          </Button>
+          <Button variant="outline" className="gap-2">
+            Finalizar
+          </Button>
+          <Button variant="destructive" className="gap-2">
+            Excluir
+          </Button>
+        </div>
       </div>
 
-      <Card>
-        <CardContent className="pt-6">
-          <div className="flex justify-between items-start mb-6">
-            <div>
-              <h2 className="text-2xl font-semibold">{project.name}</h2>
-              <p className="text-muted-foreground">Cliente: {project.client}</p>
+      {/* Header com informações principais */}
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        <Card className="lg:col-span-1">
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-2">
+              <Building className="h-5 w-5 text-gray-600" />
+              <span className="text-sm font-medium text-gray-600">Cliente</span>
             </div>
-            <Badge className={getStatusColor(project.status)}>
+          </CardHeader>
+          <CardContent>
+            <div className="text-xl font-bold text-gray-900">{project.client}</div>
+          </CardContent>
+        </Card>
+
+        <Card className="lg:col-span-1">
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-2">
+              <User className="h-5 w-5 text-gray-600" />
+              <span className="text-sm font-medium text-gray-600">Responsável</span>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="text-xl font-bold text-gray-900">
+              {project.team.length > 0 ? project.team[0] : 'Não definido'}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="lg:col-span-1">
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-2">
+              <Clock className="h-5 w-5 text-gray-600" />
+              <span className="text-sm font-medium text-gray-600">Status</span>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <Badge className={getStatusColor(project.status)} size="lg">
               {project.status}
             </Badge>
-          </div>
+          </CardContent>
+        </Card>
 
-          <div className="space-y-4 mb-6">
-            <div>
-              <div className="flex justify-between text-sm mb-2">
-                <span>Progresso Geral</span>
-                <span>{project.progress}%</span>
-              </div>
-              <Progress value={project.progress} className="h-3" />
+        <Card className="lg:col-span-1">
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-2">
+              <Target className="h-5 w-5 text-gray-600" />
+              <span className="text-sm font-medium text-gray-600">Progresso</span>
             </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold text-gray-900">{project.progress}%</div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Informações do projeto e resumo financeiro */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5" />
+              Informações do Projeto
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <Flag className="h-4 w-4 text-gray-500" />
+                  <span className="text-sm font-medium text-gray-600">Prioridade</span>
+                </div>
+                <span className="text-orange-600 font-medium">Média</span>
+              </div>
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <Target className="h-4 w-4 text-gray-500" />
+                  <span className="text-sm font-medium text-gray-600">Fase</span>
+                </div>
+                <span className={`font-medium ${getPhaseColor(project.phase)}`}>
+                  {project.phase}
+                </span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <CalendarIcon className="h-4 w-4 text-gray-500" />
+                  <span className="text-sm font-medium text-gray-600">Data de Início</span>
+                </div>
+                <span>{format(new Date(project.startDate), 'dd/MM/yyyy', { locale: ptBR })}</span>
+              </div>
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <CalendarIcon className="h-4 w-4 text-gray-500" />
+                  <span className="text-sm font-medium text-gray-600">Previsão de Conclusão</span>
+                </div>
+                <span>Não definida</span>
+              </div>
+            </div>
+
+            {project.tags.length > 0 && (
+              <div>
+                <span className="text-sm font-medium text-gray-600">Tags:</span>
+                <div className="flex flex-wrap gap-1 mt-1">
+                  {project.tags.map((tag, index) => (
+                    <Badge key={index} variant="outline">#{tag}</Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Resumo Financeiro</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <span className="text-sm font-medium text-gray-600">Valor Estimado</span>
+              <div className="text-2xl font-bold text-gray-900">
+                {currencyService.formatCurrency(project.initialValue || 0, project.currency)}
+              </div>
+            </div>
+            <div>
+              <span className="text-sm font-medium text-gray-600">Valor Final</span>
+              <div className="text-2xl font-bold text-gray-900">
+                {currencyService.formatCurrency(project.finalValue || 0, project.currency)}
+              </div>
+            </div>
+            <div>
+              <span className="text-sm font-medium text-gray-600">Moeda</span>
+              <div className="font-medium">{project.currency}</div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
       <Tabs defaultValue="overview" className="w-full">
         <TabsList className="grid w-full grid-cols-6">
@@ -226,43 +395,16 @@ export function ProjectDetails() {
         </TabsList>
 
         <TabsContent value="overview" className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Informações do Projeto</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div>
-                  <span className="font-medium">Descrição:</span>
-                  <p className="text-muted-foreground mt-1">{project.description}</p>
-                </div>
-                <div>
-                  <span className="font-medium">Data de Início:</span>
-                  <p className="text-muted-foreground">{format(new Date(project.startDate), 'dd/MM/yyyy', { locale: ptBR })}</p>
-                </div>
-                <div>
-                  <span className="font-medium">Data de Fim:</span>
-                  <p className="text-muted-foreground">{format(new Date(project.endDate), 'dd/MM/yyyy', { locale: ptBR })}</p>
-                </div>
-                {project.team.length > 0 && (
-                  <div>
-                    <span className="font-medium">Equipe:</span>
-                    <p className="text-muted-foreground">{project.team.join(', ')}</p>
-                  </div>
-                )}
-                {project.tags.length > 0 && (
-                  <div>
-                    <span className="font-medium">Tags:</span>
-                    <div className="flex flex-wrap gap-1 mt-1">
-                      {project.tags.map((tag, index) => (
-                        <Badge key={index} variant="outline">#{tag}</Badge>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>Descrição do Projeto</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-muted-foreground">{project.description}</p>
+            </CardContent>
+          </Card>
 
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <Card>
               <CardHeader>
                 <CardTitle>Estatísticas</CardTitle>
@@ -290,92 +432,120 @@ export function ProjectDetails() {
                 </div>
               </CardContent>
             </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Progresso</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div>
+                    <div className="flex justify-between text-sm mb-2">
+                      <span>Progresso Geral</span>
+                      <span>{project.progress}%</span>
+                    </div>
+                    <Progress value={project.progress} className="h-3" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         </TabsContent>
 
         <TabsContent value="tasks" className="space-y-4">
           <Card>
-            <CardHeader>
-              <CardTitle>Adicionar Nova Tarefa</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label>Título da Tarefa*</Label>
-                  <Input
-                    placeholder="Digite o título da tarefa..."
-                    value={newTask.title}
-                    onChange={(e) => setNewTask({...newTask, title: e.target.value})}
-                  />
-                </div>
-                <div>
-                  <Label>Responsável</Label>
-                  <Input
-                    placeholder="Nome do responsável..."
-                    value={newTask.assignee}
-                    onChange={(e) => setNewTask({...newTask, assignee: e.target.value})}
-                  />
-                </div>
-              </div>
-
-              <div>
-                <Label>Descrição</Label>
-                <Textarea
-                  placeholder="Descrição da tarefa (opcional)..."
-                  value={newTask.description}
-                  onChange={(e) => setNewTask({...newTask, description: e.target.value})}
-                />
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <Label>Prioridade</Label>
-                  <Select value={newTask.priority} onValueChange={(value: Task['priority']) => setNewTask({...newTask, priority: value})}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="baixa">Baixa</SelectItem>
-                      <SelectItem value="média">Média</SelectItem>
-                      <SelectItem value="alta">Alta</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label>Status</Label>
-                  <Select value={newTask.status} onValueChange={(value: Task['status']) => setNewTask({...newTask, status: value})}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="pendente">Pendente</SelectItem>
-                      <SelectItem value="em andamento">Em Andamento</SelectItem>
-                      <SelectItem value="concluída">Concluída</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label>Data de Vencimento</Label>
-                  <Input
-                    type="date"
-                    value={newTask.dueDate}
-                    onChange={(e) => setNewTask({...newTask, dueDate: e.target.value})}
-                  />
-                </div>
-              </div>
-
-              <Button onClick={handleAddTask} className="w-full">
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle>Tarefas ({project.tasks.length})</CardTitle>
+              <Button onClick={() => setShowTaskForm(!showTaskForm)} size="sm">
                 <Plus className="w-4 h-4 mr-2" />
                 Adicionar Tarefa
               </Button>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Tarefas ({project.tasks.length})</CardTitle>
             </CardHeader>
             <CardContent>
+              {showTaskForm && (
+                <Card className="mb-6">
+                  <CardHeader>
+                    <div className="flex justify-between items-center">
+                      <CardTitle>Adicionar Nova Tarefa</CardTitle>
+                      <Button variant="ghost" size="sm" onClick={() => setShowTaskForm(false)}>
+                        <X className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <Label>Título da Tarefa*</Label>
+                        <Input
+                          placeholder="Digite o título da tarefa..."
+                          value={newTask.title}
+                          onChange={(e) => setNewTask({...newTask, title: e.target.value})}
+                        />
+                      </div>
+                      <div>
+                        <Label>Responsável</Label>
+                        <Input
+                          placeholder="Nome do responsável..."
+                          value={newTask.assignee}
+                          onChange={(e) => setNewTask({...newTask, assignee: e.target.value})}
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <Label>Descrição</Label>
+                      <Textarea
+                        placeholder="Descrição da tarefa (opcional)..."
+                        value={newTask.description}
+                        onChange={(e) => setNewTask({...newTask, description: e.target.value})}
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div>
+                        <Label>Prioridade</Label>
+                        <Select value={newTask.priority} onValueChange={(value: Task['priority']) => setNewTask({...newTask, priority: value})}>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="baixa">Baixa</SelectItem>
+                            <SelectItem value="média">Média</SelectItem>
+                            <SelectItem value="alta">Alta</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label>Status</Label>
+                        <Select value={newTask.status} onValueChange={(value: Task['status']) => setNewTask({...newTask, status: value})}>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="pendente">Pendente</SelectItem>
+                            <SelectItem value="em andamento">Em Andamento</SelectItem>
+                            <SelectItem value="concluída">Concluída</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label>Data de Vencimento</Label>
+                        <Input
+                          type="date"
+                          value={newTask.dueDate}
+                          onChange={(e) => setNewTask({...newTask, dueDate: e.target.value})}
+                        />
+                      </div>
+                    </div>
+
+                    <Button onClick={handleAddTask} className="w-full">
+                      <Plus className="w-4 h-4 mr-2" />
+                      Adicionar Tarefa
+                    </Button>
+                  </CardContent>
+                </Card>
+              )}
+
               {project.tasks.length === 0 ? (
                 <p className="text-muted-foreground">Nenhuma tarefa adicionada ainda.</p>
               ) : (
@@ -437,17 +607,63 @@ export function ProjectDetails() {
               <CardTitle>Arquivos do Projeto</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="border-2 border-dashed border-muted rounded-lg p-8 text-center">
-                <div className="space-y-2">
-                  <Download className="w-8 h-8 mx-auto text-muted-foreground" />
-                  <p className="text-muted-foreground">
-                    Funcionalidade de upload será implementada
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    Formatos aceitos: PDF, DOCX, XLSX, CSV, TXT, PNG, JPG, JPEG, SVG
-                  </p>
+              <div 
+                className="border-2 border-dashed border-muted rounded-lg p-8 text-center hover:border-primary transition-colors cursor-pointer"
+                onDragOver={handleDragOver}
+                onDrop={handleDrop}
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <div className="space-y-4">
+                  <Upload className="w-12 h-12 mx-auto text-muted-foreground" />
+                  <div>
+                    <p className="text-lg font-medium">
+                      Clique para fazer upload ou arraste arquivos aqui
+                    </p>
+                    <p className="text-sm text-muted-foreground mt-2">
+                      Formatos aceitos: PDF, DOCX, XLSX, CSV, TXT, PNG, JPG, JPEG, SVG
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Tamanho máximo: 10MB por arquivo
+                    </p>
+                  </div>
+                  <Button variant="outline">
+                    <Upload className="w-4 h-4 mr-2" />
+                    Selecionar Arquivos
+                  </Button>
                 </div>
               </div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                className="hidden"
+                onChange={handleFileUpload}
+                accept=".pdf,.docx,.xlsx,.csv,.txt,.png,.jpg,.jpeg,.svg"
+              />
+              
+              {project.files.length > 0 && (
+                <div className="mt-6">
+                  <h4 className="font-medium mb-3">Arquivos Enviados</h4>
+                  <div className="space-y-2">
+                    {project.files.map((file) => (
+                      <div key={file.id} className="flex items-center justify-between p-3 border rounded-lg">
+                        <div className="flex items-center space-x-3">
+                          <FileText className="w-5 h-5 text-muted-foreground" />
+                          <div>
+                            <p className="font-medium">{file.name}</p>
+                            <p className="text-sm text-muted-foreground">
+                              {(file.size / 1024 / 1024).toFixed(2)} MB • {formatDate(file.uploadedAt)}
+                            </p>
+                          </div>
+                        </div>
+                        <Button variant="outline" size="sm">
+                          <Download className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

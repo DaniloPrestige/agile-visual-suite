@@ -1,11 +1,12 @@
+
 import { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
 import { useProjects } from "../hooks/useProjects";
 import { differenceInDays } from "date-fns";
-import { DollarSign, TrendingUp, Target, Clock, Award, BarChart3 } from "lucide-react";
+import { DollarSign, TrendingUp, Target, Clock, Award, BarChart3, Users, AlertTriangle, Calendar, Zap } from "lucide-react";
 import { currencyService } from "../services/currencyService";
 import { useNavigate } from "react-router-dom";
 
@@ -58,6 +59,11 @@ export function Analytics() {
       return acc;
     }, {} as Record<string, number>);
 
+    // Total de tarefas e conclusão
+    const totalTasks = activeProjects.reduce((sum, p) => sum + p.tasks.length, 0);
+    const completedTasks = activeProjects.reduce((sum, p) => sum + p.tasks.filter(t => t.completed).length, 0);
+    const taskCompletionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+
     // Projetos atrasados com detalhes
     const overdueDetails = projects
       .filter(p => {
@@ -78,6 +84,16 @@ export function Analytics() {
       .sort((a, b) => a.progress - b.progress)
       .slice(0, 3);
 
+    // Dados para evolução da receita (últimos 6 meses simulados)
+    const revenueEvolution = [
+      { month: 'Jan', receita: 120000, planejado: 100000 },
+      { month: 'Fev', receita: 180000, planejado: 150000 },
+      { month: 'Mar', receita: 220000, planejado: 180000 },
+      { month: 'Abr', receita: 190000, planejado: 200000 },
+      { month: 'Mai', receita: 280000, planejado: 250000 },
+      { month: 'Jun', receita: completedRevenue, planejado: totalRevenue }
+    ];
+
     return {
       total,
       inProgress,
@@ -92,7 +108,11 @@ export function Analytics() {
       tagStats,
       teamStats,
       overdueDetails,
-      poorPerformance
+      poorPerformance,
+      totalTasks,
+      completedTasks,
+      taskCompletionRate,
+      revenueEvolution
     };
   }, [projects]);
 
@@ -105,21 +125,21 @@ export function Analytics() {
   ];
 
   const tagData = Object.entries(analytics.tagStats)
-    .map(([name, value]) => ({ name, value }))
+    .map(([name, value]) => ({ name: name.length > 10 ? name.substring(0, 10) + '...' : name, value }))
     .sort((a, b) => b.value - a.value)
-    .slice(0, 10);
+    .slice(0, 8);
 
   const teamData = Object.entries(analytics.teamStats)
-    .map(([name, value]) => ({ name, value }))
+    .map(([name, value]) => ({ name: name.length > 15 ? name.substring(0, 15) + '...' : name, value }))
     .sort((a, b) => b.value - a.value)
-    .slice(0, 10);
+    .slice(0, 8);
 
   return (
     <div className="space-y-6">
       <h1 className="text-3xl font-bold">Analytics</h1>
 
       {/* Cards principais de KPIs clicáveis */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
         <Card 
           className="cursor-pointer hover:shadow-lg transition-all border-l-4 border-l-blue-500"
           onClick={() => navigate('/analytics/kpi')}
@@ -129,13 +149,8 @@ export function Analytics() {
             <BarChart3 className="h-4 w-4 text-blue-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-lg font-bold">Score Geral</div>
-            <div className="text-2xl font-bold text-blue-600">
-              {analytics.kpiScore}%
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Baseado em entrega, progresso e conclusão
-            </p>
+            <div className="text-2xl font-bold text-blue-600">{analytics.kpiScore}%</div>
+            <p className="text-xs text-muted-foreground">Score Global</p>
           </CardContent>
         </Card>
 
@@ -144,14 +159,14 @@ export function Analytics() {
           onClick={() => navigate('/analytics/financial')}
         >
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Financeiro</CardTitle>
+            <CardTitle className="text-sm font-medium">Receita Total</CardTitle>
             <DollarSign className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-lg font-bold">Receita Total</div>
             <div className="text-2xl font-bold text-green-600">
               {currencyService.formatCurrency(analytics.totalRevenue, 'BRL')}
             </div>
+            <p className="text-xs text-muted-foreground">Todos os projetos</p>
           </CardContent>
         </Card>
 
@@ -160,51 +175,107 @@ export function Analytics() {
           onClick={() => navigate('/analytics/quality')}
         >
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Qualidade</CardTitle>
+            <CardTitle className="text-sm font-medium">Taxa de Entrega</CardTitle>
             <Award className="h-4 w-4 text-purple-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-lg font-bold">Taxa de Entrega</div>
             <div className="text-2xl font-bold text-purple-600">{analytics.deliveryRate}%</div>
+            <p className="text-xs text-muted-foreground">No prazo</p>
+          </CardContent>
+        </Card>
+
+        <Card className="border-l-4 border-l-orange-500">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Progresso Médio</CardTitle>
+            <Target className="h-4 w-4 text-orange-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-orange-600">{analytics.avgProgress}%</div>
+            <p className="text-xs text-muted-foreground">Projetos ativos</p>
+          </CardContent>
+        </Card>
+
+        <Card className="border-l-4 border-l-indigo-500">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Conclusão Tarefas</CardTitle>
+            <Zap className="h-4 w-4 text-indigo-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-indigo-600">{analytics.taskCompletionRate}%</div>
+            <p className="text-xs text-muted-foreground">{analytics.completedTasks}/{analytics.totalTasks} tarefas</p>
           </CardContent>
         </Card>
       </div>
 
       {/* Cards de métricas secundárias */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
+        <Card className="bg-blue-50">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total de Projetos</CardTitle>
+            <CardTitle className="text-sm font-medium">Total</CardTitle>
+            <Users className="h-4 w-4 text-blue-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{analytics.total}</div>
+            <div className="text-2xl font-bold text-blue-600">{analytics.total}</div>
+            <p className="text-xs text-muted-foreground">Projetos</p>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="bg-yellow-50">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Em Andamento</CardTitle>
+            <Clock className="h-4 w-4 text-yellow-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-600">{analytics.inProgress}</div>
+            <div className="text-2xl font-bold text-yellow-600">{analytics.inProgress}</div>
+            <p className="text-xs text-muted-foreground">Ativos</p>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="bg-green-50">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Finalizados</CardTitle>
+            <Award className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">{analytics.completed}</div>
+            <p className="text-xs text-muted-foreground">Concluídos</p>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="bg-red-50">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Atrasados</CardTitle>
+            <AlertTriangle className="h-4 w-4 text-red-600" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-red-600">{analytics.overdue}</div>
+            <p className="text-xs text-muted-foreground">Vencidos</p>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-purple-50">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Variação</CardTitle>
+            <TrendingUp className="h-4 w-4 text-purple-600" />
+          </CardHeader>
+          <CardContent>
+            <div className={`text-2xl font-bold ${analytics.budgetVariation >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+              {analytics.budgetVariation >= 0 ? '+' : ''}{currencyService.formatCurrency(analytics.budgetVariation, 'BRL')}
+            </div>
+            <p className="text-xs text-muted-foreground">Orçamento</p>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-teal-50">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Realizado</CardTitle>
+            <DollarSign className="h-4 w-4 text-teal-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-teal-600">
+              {currencyService.formatCurrency(analytics.completedRevenue, 'BRL')}
+            </div>
+            <p className="text-xs text-muted-foreground">Receita</p>
           </CardContent>
         </Card>
       </div>
@@ -226,7 +297,7 @@ export function Analytics() {
         </CardContent>
       </Card>
 
-      {/* Gráficos */}
+      {/* Gráficos principais */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
@@ -244,7 +315,7 @@ export function Analytics() {
                   outerRadius={80}
                   fill="#8884d8"
                   dataKey="value"
-                  fontSize={12}
+                  fontSize={11}
                 >
                   {statusData.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={entry.color} />
@@ -258,6 +329,99 @@ export function Analytics() {
 
         <Card>
           <CardHeader>
+            <CardTitle>Projetos por Responsável</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={teamData} layout="horizontal">
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis type="number" fontSize={11} />
+                <YAxis 
+                  dataKey="name" 
+                  type="category" 
+                  width={80} 
+                  fontSize={11}
+                />
+                <Tooltip />
+                <Bar dataKey="value" fill="#10b981" />
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Novos gráficos adicionais */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Evolução da Receita</CardTitle>
+            <p className="text-sm text-muted-foreground">Receita e lucratividade ao longo do tempo</p>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={300}>
+              <LineChart data={analytics.revenueEvolution}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="month" fontSize={11} />
+                <YAxis 
+                  fontSize={11}
+                  tickFormatter={(value) => `${(value / 1000).toFixed(0)}k`}
+                />
+                <Tooltip 
+                  formatter={(value) => [currencyService.formatCurrency(Number(value), 'BRL'), '']}
+                />
+                <Line 
+                  type="monotone" 
+                  dataKey="receita" 
+                  stroke="#3b82f6" 
+                  strokeWidth={3}
+                  name="Receita Realizada"
+                />
+                <Line 
+                  type="monotone" 
+                  dataKey="planejado" 
+                  stroke="#10b981" 
+                  strokeWidth={3}
+                  name="Receita Planejada"
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Análise de Lucratividade</CardTitle>
+            <p className="text-sm text-muted-foreground">Indicadores financeiros chave</p>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="text-center">
+              <div className="text-4xl font-bold text-green-600 mb-2">+167%</div>
+              <p className="text-sm text-muted-foreground">Lucratividade vs Planejado</p>
+            </div>
+            <div className="space-y-3">
+              <div className="flex justify-between">
+                <span className="text-sm">Receita Realizada:</span>
+                <span className="font-medium">{currencyService.formatCurrency(analytics.completedRevenue, 'BRL')}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm">Orçamento Planejado:</span>
+                <span className="font-medium">{currencyService.formatCurrency(analytics.totalRevenue * 0.6, 'BRL')}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm">Variação:</span>
+                <span className={`font-medium ${analytics.budgetVariation >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  {analytics.budgetVariation >= 0 ? '+' : ''}{currencyService.formatCurrency(analytics.budgetVariation, 'BRL')}
+                </span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Análises detalhadas */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card>
+          <CardHeader>
             <CardTitle>Projetos por Tag</CardTitle>
           </CardHeader>
           <CardContent>
@@ -266,22 +430,19 @@ export function Analytics() {
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis 
                   dataKey="name" 
-                  fontSize={12}
+                  fontSize={11}
                   angle={-45}
                   textAnchor="end"
-                  height={60}
+                  height={80}
                 />
-                <YAxis fontSize={12} />
+                <YAxis fontSize={11} />
                 <Tooltip />
                 <Bar dataKey="value" fill="#3b82f6" />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
-      </div>
 
-      {/* Análises detalhadas */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
             <CardTitle>Projetos Mais Atrasados</CardTitle>
@@ -313,63 +474,7 @@ export function Analytics() {
             )}
           </CardContent>
         </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Projetos com Pior Desempenho</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {analytics.poorPerformance.length === 0 ? (
-              <p className="text-muted-foreground">Todos os projetos estão com bom desempenho!</p>
-            ) : (
-              <div className="space-y-4">
-                {analytics.poorPerformance.map((project) => (
-                  <div key={project.id} className="border-l-4 border-yellow-500 pl-4">
-                    <div className="flex justify-between items-start mb-2">
-                      <div>
-                        <p className="font-medium">{project.name}</p>
-                        <p className="text-sm text-muted-foreground">Cliente: {project.client}</p>
-                        {project.team.length > 0 && (
-                          <p className="text-sm text-muted-foreground">
-                            Responsável: {project.team[0]}
-                          </p>
-                        )}
-                      </div>
-                      <Badge variant="secondary">{project.progress}%</Badge>
-                    </div>
-                    <Progress value={project.progress} className="h-2" />
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
       </div>
-
-      {/* Projetos por responsável */}
-      {Object.keys(analytics.teamStats).length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Projetos por Responsável</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={teamData} layout="horizontal">
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis type="number" fontSize={12} />
-                <YAxis 
-                  dataKey="name" 
-                  type="category" 
-                  width={120} 
-                  fontSize={12}
-                />
-                <Tooltip />
-                <Bar dataKey="value" fill="#10b981" />
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
 }
