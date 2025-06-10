@@ -111,10 +111,8 @@ export function useProjects() {
           if (task.id === taskId) {
             const updatedTask = { ...task, ...updates };
             // Se o status mudou para concluída, marcar como completed
-            if (updates.status === 'concluída') {
-              updatedTask.completed = true;
-            } else if (updates.status && updates.status !== 'concluída') {
-              updatedTask.completed = false;
+            if (updates.status) {
+              updatedTask.completed = updates.status === 'concluída';
             }
             return updatedTask;
           }
