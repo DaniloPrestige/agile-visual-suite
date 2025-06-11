@@ -1,442 +1,341 @@
-import { useState, useMemo, useEffect } from 'react';
+
+import { useState, useMemo } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Plus, Download, Check, Trash2, X, Search, TrashIcon } from "lucide-react";
-import { ProjectCardCompact } from "../components/ProjectCardCompact";
-import { ProjectForm } from "../components/ProjectForm";
-import { AlertPopup } from "../components/AlertPopup";
-import { useProjects } from "../hooks/useProjects";
-import { Project, FilterOptions } from "../types/project";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { TooltipProvider, Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useNavigate } from "react-router-dom";
-import { currencyService } from "../services/currencyService";
-import { PDFExportService } from "../services/pdfExportService";
+import { useProjects } from "../hooks/useProjects";
+import { ProjectForm } from "../components/ProjectForm";
+import { ProjectCard } from "../components/ProjectCard";
+import { ProjectCardCompact } from "../components/ProjectCardCompact";
+import { pdfExportService } from "../services/pdfExportService";
+import { Project } from "../types/project";
+import { Plus, Search, Download, Grid, List, Filter, FileText } from "lucide-react";
+import { toast } from "sonner";
 
 export function ProjectList() {
   const navigate = useNavigate();
   const { projects, addProject, updateProject, deleteProject } = useProjects();
-  const [isFormOpen, setIsFormOpen] = useState(false);
-  const [editingProject, setEditingProject] = useState<Project | null>(null);
-  const [selectedProjects, setSelectedProjects] = useState<string[]>([]);
-  const [activeTab, setActiveTab] = useState('active');
-  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
-  const [confirmAction, setConfirmAction] = useState<{ type: 'complete' | 'delete' | 'activate' | 'permanent-delete', projects: string[] } | null>(null);
-  const [currentCurrency, setCurrentCurrency] = useState<'BRL' | 'USD' | 'EUR'>('BRL');
   const [searchTerm, setSearchTerm] = useState('');
-
-  useEffect(() => {
-    currencyService.updateRates();
-  }, []);
+  const [phaseFilter, setPhaseFilter] = useState('all');
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [showNewProjectForm, setShowNewProjectForm] = useState(false);
+  const [editingProject, setEditingProject] = useState<Project | null>(null);
+  const [activeTab, setActiveTab] = useState('active');
 
   const filteredProjects = useMemo(() => {
-    return projects.filter(project => {
-      const matchesSearch = 
+    let filtered = projects;
+
+    // Filtro por tab ativa
+    switch (activeTab) {
+      case 'active':
+        filtered = filtered.filter(p => p.status !== 'Excluído');
+        break;
+      case 'completed':
+        filtered = filtered.filter(p => p.status === 'Finalizado');
+        break;
+      case 'deleted':
+        filtered = filtered.filter(p => p.status === 'Excluído');
+        break;
+    }
+
+    // Filtro por busca (nome, cliente, tags)
+    if (searchTerm) {
+      filtered = filtered.filter(project => 
         project.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         project.client.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        project.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()));
+        project.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()))
+      );
+    }
 
-      const matchesTab = activeTab === 'active' 
-        ? ['Em andamento', 'Atrasado'].includes(project.status)
-        : activeTab === 'completed'
-        ? project.status === 'Finalizado'
-        : project.status === 'Excluído';
+    // Filtro por fase
+    if (phaseFilter !== 'all') {
+      filtered = filtered.filter(project => project.phase === phaseFilter);
+    }
 
-      return matchesSearch && matchesTab;
-    });
-  }, [projects, searchTerm, activeTab]);
+    return filtered;
+  }, [projects, searchTerm, phaseFilter, activeTab]);
 
-  const projectStats = useMemo(() => {
-    const active = projects.filter(p => ['Em andamento', 'Atrasado'].includes(p.status));
-    const completed = projects.filter(p => p.status === 'Finalizado');
-    const deleted = projects.filter(p => p.status === 'Excluído');
-    
-    return {
-      total: projects.length - deleted.length,
-      active: active.length,
-      completed: completed.length,
-      overdue: projects.filter(p => p.status === 'Atrasado').length,
-      deleted: deleted.length
+  const handleAddProject = (projectData: Omit<Project, 'id' | 'progress' | 'tasks' | 'files' | 'comments' | 'risks' | 'history'>) => {
+    const newProject: Project = {
+      ...projectData,
+      id: Date.now().toString(),
+      progress: 0,
+      tasks: [],
+      files: [],
+      comments: [],
+      risks: [],
+      history: [{
+        id: Date.now().toString(),
+        action: 'Projeto criado',
+        date: new Date().toISOString(),
+        user: 'Sistema'
+      }]
     };
-  }, [projects]);
-
-  const handleCreateProject = (projectData: Omit<Project, 'id' | 'progress' | 'tasks' | 'files' | 'comments' | 'risks' | 'history'>) => {
-    addProject(projectData);
-    setIsFormOpen(false);
-    setEditingProject(null);
+    addProject(newProject);
+    setShowNewProjectForm(false);
+    toast.success('Projeto criado com sucesso!');
   };
 
   const handleEditProject = (project: Project) => {
     setEditingProject(project);
-    setIsFormOpen(true);
   };
 
-  const handleUpdateProject = (projectData: Omit<Project, 'id' | 'progress' | 'tasks' | 'files' | 'comments' | 'risks' | 'history'>) => {
+  const handleUpdateProject = (projectData: Partial<Project>) => {
     if (editingProject) {
       updateProject(editingProject.id, projectData);
+      setEditingProject(null);
+      toast.success('Projeto atualizado com sucesso!');
     }
-    setIsFormOpen(false);
-    setEditingProject(null);
+  };
+
+  const handleDeleteProject = (id: string) => {
+    deleteProject(id);
+    toast.success('Projeto excluído!');
   };
 
   const handleViewProject = (project: Project) => {
     navigate(`/projects/${project.id}`);
   };
 
-  const handleStatusChange = (projectId: string, newStatus: Project['status']) => {
-    if (newStatus === 'Finalizado') {
-      setConfirmAction({ type: 'complete', projects: [projectId] });
-    } else if (newStatus === 'Excluído') {
-      setConfirmAction({ type: 'delete', projects: [projectId] });
-    } else if (newStatus === 'Em andamento') {
-      setConfirmAction({ type: 'activate', projects: [projectId] });
-    }
-    setShowConfirmDialog(true);
-  };
-
-  const handleBulkComplete = () => {
-    if (selectedProjects.length > 0) {
-      setConfirmAction({ type: 'complete', projects: selectedProjects });
-      setShowConfirmDialog(true);
-    }
-  };
-
-  const handleBulkDelete = () => {
-    if (selectedProjects.length > 0) {
-      if (activeTab === 'deleted') {
-        setConfirmAction({ type: 'permanent-delete', projects: selectedProjects });
-      } else {
-        setConfirmAction({ type: 'delete', projects: selectedProjects });
-      }
-      setShowConfirmDialog(true);
-    }
-  };
-
-  const handleBulkActivate = () => {
-    if (selectedProjects.length > 0) {
-      setConfirmAction({ type: 'activate', projects: selectedProjects });
-      setShowConfirmDialog(true);
-    }
-  };
-
-  const handlePermanentDelete = () => {
-    if (selectedProjects.length > 0) {
-      setConfirmAction({ type: 'permanent-delete', projects: selectedProjects });
-      setShowConfirmDialog(true);
-    }
+  const handleStatusChange = (id: string, status: Project['status']) => {
+    updateProject(id, { status });
+    toast.success(`Status do projeto alterado para ${status}`);
   };
 
   const handleExportProjects = async () => {
-    const projectsToExport = selectedProjects.length > 0 
-      ? projects.filter(p => selectedProjects.includes(p.id))
-      : filteredProjects;
-    
-    if (projectsToExport.length === 0) {
-      alert('Nenhum projeto selecionado para exportar');
-      return;
-    }
-
     try {
-      await PDFExportService.exportProjects(projectsToExport, currentCurrency);
+      await pdfExportService.exportProjectsList(filteredProjects);
+      toast.success('Lista de projetos exportada com sucesso!');
     } catch (error) {
-      console.error('Error exporting projects:', error);
-      alert('Erro ao exportar projetos. Tente novamente.');
+      toast.error('Erro ao exportar lista de projetos');
     }
   };
 
-  const handleConfirmAction = () => {
-    if (!confirmAction) return;
-
-    confirmAction.projects.forEach(projectId => {
-      const project = projects.find(p => p.id === projectId);
-      if (project) {
-        if (confirmAction.type === 'complete') {
-          updateProject(projectId, { ...project, status: 'Finalizado' as Project['status'] });
-        } else if (confirmAction.type === 'delete') {
-          updateProject(projectId, { ...project, status: 'Excluído' as Project['status'] });
-        } else if (confirmAction.type === 'activate') {
-          updateProject(projectId, { ...project, status: 'Em andamento' as Project['status'] });
-        } else if (confirmAction.type === 'permanent-delete') {
-          deleteProject(projectId);
-        }
-      }
-    });
-
-    setSelectedProjects([]);
-    setShowConfirmDialog(false);
-    setConfirmAction(null);
-  };
-
-  const handleSelectAll = () => {
-    if (selectedProjects.length === filteredProjects.length) {
-      setSelectedProjects([]);
-    } else {
-      setSelectedProjects(filteredProjects.map(p => p.id));
-    }
-  };
-
-  const handleCloseForm = () => {
-    setIsFormOpen(false);
-    setEditingProject(null);
-  };
-
-  const getConfirmationMessage = () => {
-    if (!confirmAction) return '';
-    
-    switch (confirmAction.type) {
-      case 'complete':
-        return `Tem certeza que deseja finalizar ${confirmAction.projects.length} projeto(s)?`;
-      case 'delete':
-        return `Tem certeza que deseja mover ${confirmAction.projects.length} projeto(s) para a lixeira?`;
-      case 'activate':
-        return `Tem certeza que deseja reativar ${confirmAction.projects.length} projeto(s)?`;
-      case 'permanent-delete':
-        return `Tem certeza que deseja excluir permanentemente ${confirmAction.projects.length} projeto(s)? Esta ação NÃO pode ser desfeita.`;
+  const getStatusColor = (status: Project['status']) => {
+    switch (status) {
+      case 'Em andamento':
+        return 'bg-blue-100 text-blue-800';
+      case 'Finalizado':
+        return 'bg-green-100 text-green-800';
+      case 'Cancelado':
+        return 'bg-gray-100 text-gray-800';
+      case 'Atrasado':
+        return 'bg-red-100 text-red-800';
+      case 'Excluído':
+        return 'bg-red-100 text-red-800';
       default:
-        return '';
-    }
-  };
-
-  const getConfirmationTitle = () => {
-    if (!confirmAction) return '';
-    
-    switch (confirmAction.type) {
-      case 'complete':
-        return 'Finalizar Projeto(s)';
-      case 'delete':
-        return 'Mover para Lixeira';
-      case 'activate':
-        return 'Reativar Projeto(s)';
-      case 'permanent-delete':
-        return 'Excluir Permanentemente';
-      default:
-        return '';
-    }
-  };
-
-  const getActionButtonText = () => {
-    if (!confirmAction) return '';
-    
-    switch (confirmAction.type) {
-      case 'complete':
-        return 'Finalizar';
-      case 'delete':
-        return 'Mover para Lixeira';
-      case 'activate':
-        return 'Reativar';
-      case 'permanent-delete':
-        return 'Excluir Permanentemente';
-      default:
-        return '';
+        return 'bg-gray-100 text-gray-800';
     }
   };
 
   return (
-    <div className="space-y-6">
-      <AlertPopup projects={projects} />
-      
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-lg text-gray-900 mb-2">Gerencie todos os seus projetos em um só lugar</h1>
-        </div>
-        <div className="flex items-center gap-4">
-          <Button onClick={() => setIsFormOpen(true)} className="gap-2 bg-blue-600 hover:bg-blue-700">
-            <Plus className="w-4 h-4" />
-            Novo Projeto
-          </Button>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card className="border-l-4 border-l-blue-500">
-          <CardContent className="p-4">
-            <div className="text-2xl font-bold">{projectStats.total}</div>
-            <div className="text-sm text-gray-600">Total de Projetos</div>
-          </CardContent>
-        </Card>
-        <Card className="border-l-4 border-l-yellow-500">
-          <CardContent className="p-4">
-            <div className="text-2xl font-bold">{projectStats.active}</div>
-            <div className="text-sm text-gray-600">Em Progresso</div>
-          </CardContent>
-        </Card>
-        <Card className="border-l-4 border-l-green-500">
-          <CardContent className="p-4">
-            <div className="text-2xl font-bold">{projectStats.completed}</div>
-            <div className="text-sm text-gray-600">Finalizados</div>
-          </CardContent>
-        </Card>
-        <Card className="border-l-4 border-l-red-500">
-          <CardContent className="p-4">
-            <div className="text-2xl font-bold">{projectStats.overdue}</div>
-            <div className="text-sm text-gray-600">Atrasados</div>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="flex items-center gap-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-          <Input
-            placeholder="Buscar por nome, cliente ou tags..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
-          />
-        </div>
-        <Button variant="outline" onClick={handleExportProjects}>
-          <Download className="w-4 h-4 mr-2" />
-          Exportar PDF
-        </Button>
-      </div>
-
-      {selectedProjects.length > 0 && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Checkbox checked={true} />
-            <span className="font-medium">{selectedProjects.length} projeto(s) selecionado(s)</span>
+    <TooltipProvider>
+      <div className="space-y-6">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div>
+            <h1 className="text-3xl font-bold">Projetos</h1>
+            <p className="text-sm text-muted-foreground">Gerencie todos os seus projetos em um só lugar</p>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={handleExportProjects}>
-              <Download className="w-4 h-4 mr-2" />
-              Exportar
-            </Button>
-            {activeTab === 'deleted' ? (
-              <>
-                <Button variant="outline" size="sm" onClick={handleBulkActivate}>
-                  <Check className="w-4 h-4 mr-2" />
-                  Reativar
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button onClick={handleExportProjects} variant="outline" size="sm">
+                  <FileText className="h-4 w-4 mr-2" />
+                  Exportar PDF
                 </Button>
-                <Button variant="outline" size="sm" onClick={handlePermanentDelete} className="text-red-600">
-                  <TrashIcon className="w-4 h-4 mr-2" />
-                  Excluir Definitivamente
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Exportar lista de projetos para PDF</p>
+              </TooltipContent>
+            </Tooltip>
+            
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button onClick={() => setShowNewProjectForm(true)}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Novo Projeto
                 </Button>
-              </>
-            ) : activeTab === 'completed' ? (
-              <Button variant="outline" size="sm" onClick={handleBulkActivate}>
-                <Check className="w-4 h-4 mr-2" />
-                Reativar
-              </Button>
-            ) : (
-              <>
-                <Button variant="outline" size="sm" onClick={handleBulkComplete}>
-                  <Check className="w-4 h-4 mr-2" />
-                  Finalizar
-                </Button>
-                <Button variant="outline" size="sm" onClick={handleBulkDelete} className="text-red-600">
-                  <Trash2 className="w-4 h-4 mr-2" />
-                  Mover para Lixeira
-                </Button>
-              </>
-            )}
-            <Button variant="ghost" size="sm" onClick={() => setSelectedProjects([])}>
-              <X className="w-4 h-4" />
-            </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Criar um novo projeto</p>
+              </TooltipContent>
+            </Tooltip>
           </div>
         </div>
-      )}
 
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="active">Ativos ({projectStats.active})</TabsTrigger>
-          <TabsTrigger value="completed">Finalizados ({projectStats.completed})</TabsTrigger>
-          <TabsTrigger value="deleted">Lixeira ({projectStats.deleted})</TabsTrigger>
-        </TabsList>
+        {/* Filtros e controles */}
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
+              <div className="flex flex-col sm:flex-row gap-4 flex-1">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                  <Input
+                    placeholder="Buscar por nome, cliente ou tags..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10 w-full sm:w-80"
+                  />
+                </div>
+                
+                <div className="flex items-center gap-2">
+                  <Filter className="h-4 w-4 text-gray-500" />
+                  <Select value={phaseFilter} onValueChange={setPhaseFilter}>
+                    <SelectTrigger className="w-40">
+                      <SelectValue placeholder="Filtrar por fase" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todas as fases</SelectItem>
+                      <SelectItem value="Iniciação">Iniciação</SelectItem>
+                      <SelectItem value="Planejamento">Planejamento</SelectItem>
+                      <SelectItem value="Execução">Execução</SelectItem>
+                      <SelectItem value="Monitoramento">Monitoramento</SelectItem>
+                      <SelectItem value="Encerramento">Encerramento</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
 
-        <TabsContent value={activeTab} className="mt-6">
-          {filteredProjects.length === 0 ? (
-            <div className="text-center py-16 bg-gray-50 rounded-lg">
-              <div className="max-w-md mx-auto">
-                <div className="text-6xl mb-4">📋</div>
-                <p className="text-gray-500 text-lg mb-4">
-                  {projects.length === 0 
-                    ? 'Nenhum projeto encontrado. Crie seu primeiro projeto!'
-                    : 'Nenhum projeto encontrado com os filtros aplicados.'
-                  }
-                </p>
-                {projects.length === 0 && (
-                  <Button onClick={() => setIsFormOpen(true)} className="bg-blue-600 hover:bg-blue-700">
-                    <Plus className="w-4 h-4 mr-2" />
-                    Criar Primeiro Projeto
-                  </Button>
-                )}
+              <div className="flex items-center gap-2">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant={viewMode === 'grid' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setViewMode('grid')}
+                    >
+                      <Grid className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Visualização em grade</p>
+                  </TooltipContent>
+                </Tooltip>
+                
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant={viewMode === 'list' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setViewMode('list')}
+                    >
+                      <List className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Visualização em lista</p>
+                  </TooltipContent>
+                </Tooltip>
               </div>
             </div>
-          ) : (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-sm">
-                  <Checkbox 
-                    checked={selectedProjects.length === filteredProjects.length}
-                    onCheckedChange={handleSelectAll}
-                  />
-                  <span>Selecionar todos ({filteredProjects.length})</span>
-                </div>
-                {activeTab === 'deleted' && selectedProjects.length > 0 && (
-                  <Button variant="outline" size="sm" onClick={handlePermanentDelete} className="text-red-600">
-                    <TrashIcon className="w-4 h-4 mr-2" />
-                    Excluir Definitivamente
-                  </Button>
-                )}
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          </CardContent>
+        </Card>
+
+        {/* Tabs para diferentes status */}
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="active" className="flex items-center gap-2">
+              Ativos ({projects.filter(p => p.status !== 'Excluído').length})
+            </TabsTrigger>
+            <TabsTrigger value="completed" className="flex items-center gap-2">
+              Finalizados ({projects.filter(p => p.status === 'Finalizado').length})
+            </TabsTrigger>
+            <TabsTrigger value="deleted" className="flex items-center gap-2">
+              Lixeira ({projects.filter(p => p.status === 'Excluído').length})
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value={activeTab} className="mt-6">
+            {filteredProjects.length === 0 ? (
+              <Card>
+                <CardContent className="text-center py-12">
+                  <div className="text-6xl mb-4">📁</div>
+                  <h3 className="text-lg font-semibold mb-2">Nenhum projeto encontrado</h3>
+                  <p className="text-gray-500 mb-6">
+                    {searchTerm || phaseFilter !== 'all'
+                      ? 'Tente ajustar os filtros de busca.'
+                      : 'Comece criando seu primeiro projeto.'}
+                  </p>
+                  {!searchTerm && phaseFilter === 'all' && (
+                    <Button onClick={() => setShowNewProjectForm(true)}>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Criar Primeiro Projeto
+                    </Button>
+                  )}
+                </CardContent>
+              </Card>
+            ) : (
+              <div className={viewMode === 'grid' 
+                ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" 
+                : "space-y-4"
+              }>
                 {filteredProjects.map((project) => (
-                  <ProjectCardCompact
-                    key={project.id}
-                    project={project}
-                    onView={handleViewProject}
-                    onEdit={handleEditProject}
-                    onDelete={(id) => handleStatusChange(id, 'Excluído')}
-                    onStatusChange={handleStatusChange}
-                    isSelected={selectedProjects.includes(project.id)}
-                    onSelectChange={(selected) => {
-                      if (selected) {
-                        setSelectedProjects([...selectedProjects, project.id]);
-                      } else {
-                        setSelectedProjects(selectedProjects.filter(id => id !== project.id));
-                      }
-                    }}
-                    currentCurrency={currentCurrency}
-                  />
+                  viewMode === 'grid' ? (
+                    <ProjectCard
+                      key={project.id}
+                      project={project}
+                      onEdit={handleEditProject}
+                      onDelete={handleDeleteProject}
+                      onView={handleViewProject}
+                      onStatusChange={handleStatusChange}
+                      currentCurrency="BRL"
+                    />
+                  ) : (
+                    <ProjectCardCompact
+                      key={project.id}
+                      project={project}
+                      onEdit={handleEditProject}
+                      onDelete={handleDeleteProject}
+                      onView={handleViewProject}
+                      onStatusChange={handleStatusChange}
+                      isSelected={false}
+                      onSelectChange={() => {}}
+                      currentCurrency="BRL"
+                    />
+                  )
                 ))}
               </div>
-            </div>
-          )}
-        </TabsContent>
-      </Tabs>
+            )}
+          </TabsContent>
+        </Tabs>
 
-      <ProjectForm
-        isOpen={isFormOpen}
-        onClose={handleCloseForm}
-        onSubmit={editingProject ? handleUpdateProject : handleCreateProject}
-        project={editingProject}
-      />
+        {/* Dialog para novo projeto */}
+        <Dialog open={showNewProjectForm} onOpenChange={setShowNewProjectForm}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Criar Novo Projeto</DialogTitle>
+            </DialogHeader>
+            <ProjectForm
+              onSubmit={handleAddProject}
+              isOpen={showNewProjectForm}
+              onClose={() => setShowNewProjectForm(false)}
+            />
+          </DialogContent>
+        </Dialog>
 
-      <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              {getConfirmationTitle()}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {getConfirmationMessage()}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={handleConfirmAction}
-              className={confirmAction?.type === 'permanent-delete' ? 'bg-red-600 hover:bg-red-700' : ''}
-            >
-              {getActionButtonText()}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </div>
+        {/* Dialog para editar projeto */}
+        <Dialog open={!!editingProject} onOpenChange={(open) => !open && setEditingProject(null)}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Editar Projeto</DialogTitle>
+            </DialogHeader>
+            {editingProject && (
+              <ProjectForm
+                project={editingProject}
+                onSubmit={handleUpdateProject}
+                isOpen={!!editingProject}
+                onClose={() => setEditingProject(null)}
+              />
+            )}
+          </DialogContent>
+        </Dialog>
+      </div>
+    </TooltipProvider>
   );
 }
