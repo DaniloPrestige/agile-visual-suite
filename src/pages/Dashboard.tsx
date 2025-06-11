@@ -115,9 +115,9 @@ export function Dashboard() {
   }, [projects]);
 
   const riskData = useMemo(() => {
-    const highRisks = projects.reduce((sum, project) => sum + project.risks.filter(r => r.impact === 'Alto').length, 0);
-    const mediumRisks = projects.reduce((sum, project) => sum + project.risks.filter(r => r.impact === 'Médio').length, 0);
-    const lowRisks = projects.reduce((sum, project) => sum + project.risks.filter(r => r.impact === 'Baixo').length, 0);
+    const highRisks = projects.reduce((sum, project) => sum + project.risks.filter(r => r.impact === 'alto').length, 0);
+    const mediumRisks = projects.reduce((sum, project) => sum + project.risks.filter(r => r.impact === 'médio').length, 0);
+    const lowRisks = projects.reduce((sum, project) => sum + project.risks.filter(r => r.impact === 'baixo').length, 0);
 
     return [
       { name: 'Alto', value: highRisks },

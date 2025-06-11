@@ -71,7 +71,9 @@ export function ProjectList() {
       risks: [],
       history: [{
         id: Date.now().toString(),
+        projectId: Date.now().toString(),
         action: 'Projeto criado',
+        details: 'Projeto foi criado no sistema',
         timestamp: new Date().toISOString(),
         user: 'Sistema'
       }]
@@ -282,7 +284,6 @@ export function ProjectList() {
                       onEdit={handleEditProject}
                       onDelete={handleDeleteProject}
                       onView={handleViewProject}
-                      currentCurrency="BRL"
                     />
                   ) : (
                     <ProjectCardCompact
