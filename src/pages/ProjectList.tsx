@@ -1,4 +1,3 @@
-
 import { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,7 +12,7 @@ import { useProjects } from "../hooks/useProjects";
 import { ProjectForm } from "../components/ProjectForm";
 import { ProjectCard } from "../components/ProjectCard";
 import { ProjectCardCompact } from "../components/ProjectCardCompact";
-import { pdfExportService } from "../services/pdfExportService";
+import { PDFExportService } from "../services/pdfExportService";
 import { Project } from "../types/project";
 import { Plus, Search, Download, Grid, List, Filter, FileText } from "lucide-react";
 import { toast } from "sonner";
@@ -73,7 +72,7 @@ export function ProjectList() {
       history: [{
         id: Date.now().toString(),
         action: 'Projeto criado',
-        date: new Date().toISOString(),
+        timestamp: new Date().toISOString(),
         user: 'Sistema'
       }]
     };
@@ -110,7 +109,7 @@ export function ProjectList() {
 
   const handleExportProjects = async () => {
     try {
-      await pdfExportService.exportProjectsList(filteredProjects);
+      await PDFExportService.exportProjects(filteredProjects);
       toast.success('Lista de projetos exportada com sucesso!');
     } catch (error) {
       toast.error('Erro ao exportar lista de projetos');
@@ -283,7 +282,6 @@ export function ProjectList() {
                       onEdit={handleEditProject}
                       onDelete={handleDeleteProject}
                       onView={handleViewProject}
-                      onStatusChange={handleStatusChange}
                       currentCurrency="BRL"
                     />
                   ) : (
