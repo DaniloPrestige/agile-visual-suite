@@ -5,7 +5,6 @@ import { Toaster } from '@/components/ui/sonner';
 import { Header } from './components/Header';
 import { Footer } from './components/Footer';
 import { Dashboard } from './pages/Dashboard';
-import { Projects } from './pages/Projects';
 import { ProjectList } from './pages/ProjectList';
 import { Analytics } from './pages/Analytics';
 import { AnalyticsDetails } from './pages/AnalyticsDetails';
